@@ -1,4 +1,11 @@
+import { redirect } from "next/navigation";
+import { hasSupabaseEnv } from "@/lib/supabase/server";
+
 export default function SetupPage() {
+  if (hasSupabaseEnv()) {
+    redirect("/dashboard");
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-5 py-16 text-white">
       <div className="mx-auto max-w-2xl rounded-[8px] border border-white/10 bg-white/[0.04] p-8">
