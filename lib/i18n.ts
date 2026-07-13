@@ -113,7 +113,7 @@ const dictionaries = {
     dashboard: "Dashboard",
     profile: "Профиль",
     logout: "Выйти",
-    premiumCrm: "Премиум CRM для робототехники",
+    premiumCrm: "Премиум CRM для вашего бизнеса",
     searchPlaceholder: "Поиск учеников, оплат, групп...",
     notifications: "Уведомления",
     addStudent: "Добавить ученика",
