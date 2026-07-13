@@ -4,6 +4,7 @@ import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
 import { AlertTriangle, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MessageCircle, PackagePlus, RotateCcw, Search, ShoppingCart, Truck } from "lucide-react";
+import Link from "next/link";
 
 type BakeryRow = {
   id: string;
@@ -11,6 +12,19 @@ type BakeryRow = {
   created_at: string;
   [key: string]: string | number | null;
 };
+
+export type BakerySection =
+  | "overview"
+  | "assistant"
+  | "reports"
+  | "products"
+  | "money"
+  | "expenses"
+  | "production"
+  | "stock"
+  | "suppliers"
+  | "debts"
+  | "shops";
 
 const prices = {
   keks: 450,
@@ -27,10 +41,18 @@ const expenseCategories = [
   ["other", "Прочие расходы"],
 ] as const;
 
-export default async function BakeryDashboardPage({
+export default async function BakeryDashboardPage(props: {
+  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string }>;
+}) {
+  return <BakeryDashboardContent {...props} section="overview" />;
+}
+
+export async function BakeryDashboardContent({
   searchParams,
+  section = "overview",
 }: {
   searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string }>;
+  section?: BakerySection;
 }) {
   const [{ supabase, membership }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
@@ -155,7 +177,9 @@ export default async function BakeryDashboardPage({
         <Metric title="Возвраты" value={dayTotals.returns} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} />
       </div>
 
-      <Card id="assistant" className="mb-5 scroll-mt-6 overflow-hidden">
+      <QuickBakeryNav active={section} />
+
+      <Card id="assistant" className={`${sectionClass(section, "overview", "assistant")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
@@ -197,7 +221,7 @@ export default async function BakeryDashboardPage({
             </p>
           </div>
         </div>
-        <form action="/dashboard/bakery#assistant" className="mt-5 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
+        <form action="/dashboard/bakery/assistant#assistant" className="mt-5 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
           <input type="hidden" name="date" value={selectedDate} />
           {params.q && <input type="hidden" name="q" value={params.q} />}
           <label>
@@ -224,7 +248,7 @@ export default async function BakeryDashboardPage({
         </form>
       </Card>
 
-      <Card id="reports" className="mb-5">
+      <Card id="reports" className={`${sectionClass(section, "overview", "reports", "products", "money", "expenses", "production", "stock", "suppliers", "debts", "shops")} mb-5`}>
         <form className="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-end">
           <label>
             <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
@@ -255,7 +279,7 @@ export default async function BakeryDashboardPage({
         </form>
       </Card>
 
-      <Card id="products" className="mb-5 scroll-mt-6 overflow-hidden">
+      <Card id="products" className={`${sectionClass(section, "products")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Продажи продуктов</p>
@@ -390,7 +414,7 @@ export default async function BakeryDashboardPage({
         </div>
       </Card>
 
-      <Card id="money-report" className="mb-5 scroll-mt-6">
+      <Card id="money-report" className={`${sectionClass(section, "overview", "reports", "money")} mb-5 scroll-mt-6`}>
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Денежный отчёт</p>
@@ -416,7 +440,7 @@ export default async function BakeryDashboardPage({
         </div>
       </Card>
 
-      <Card id="expenses" className="mb-5 scroll-mt-6">
+      <Card id="expenses" className={`${sectionClass(section, "expenses")} mb-5 scroll-mt-6`}>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-100">Расходы</p>
@@ -478,7 +502,7 @@ export default async function BakeryDashboardPage({
         </div>
       </Card>
 
-      <Card id="production" className="mb-5 scroll-mt-6">
+      <Card id="production" className={`${sectionClass(section, "production")} mb-5 scroll-mt-6`}>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Продукция за день</p>
@@ -511,7 +535,7 @@ export default async function BakeryDashboardPage({
         )}
       </Card>
 
-      <Card id="stock" className="mb-5 scroll-mt-6">
+      <Card id="stock" className={`${sectionClass(section, "stock")} mb-5 scroll-mt-6`}>
         <div className="mb-4">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Общий склад</p>
           <h2 className="mt-1 text-xl font-black text-white">Все продукты и остатки</h2>
@@ -523,7 +547,7 @@ export default async function BakeryDashboardPage({
         </div>
       </Card>
 
-      <Card id="suppliers" className="mb-5 scroll-mt-6 overflow-hidden">
+      <Card id="suppliers" className={`${sectionClass(section, "suppliers")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Поставщики</p>
@@ -613,7 +637,7 @@ export default async function BakeryDashboardPage({
         </div>
       </Card>
 
-      <Card id="debts" className="mb-5 scroll-mt-6">
+      <Card id="debts" className={`${sectionClass(section, "debts")} mb-5 scroll-mt-6`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-red-100">Долги</p>
@@ -664,7 +688,7 @@ export default async function BakeryDashboardPage({
         </div>
       </Card>
 
-      <Card id="shops" className="mb-5 scroll-mt-6 overflow-hidden">
+      <Card id="shops" className={`${sectionClass(section, "shops")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Таблица</p>
@@ -744,7 +768,7 @@ export default async function BakeryDashboardPage({
       </Card>
 
       {editable && (
-        <div className="mb-5 grid gap-5">
+        <div className={`${sectionClass(section, "shops")} mb-5 grid gap-5`}>
           <Card id="add-shop" className="scroll-mt-6">
             <h2 className="text-lg font-black text-white">Добавить магазин</h2>
             <form action={saveBakeryShop} className="mt-4 grid gap-4 md:grid-cols-2">
@@ -759,7 +783,7 @@ export default async function BakeryDashboardPage({
         </div>
       )}
 
-      <div id="shop-work" className="grid scroll-mt-6 gap-5">
+      <div id="shop-work" className={`${sectionClass(section, "shops")} grid scroll-mt-6 gap-5`}>
         {!shopRows.length && <EmptyState text={query ? "По этому поиску магазины не найдены." : editable ? "Добавьте первый магазин, потом водитель сможет заносить продажи." : "Магазинов пока нет. Founder/Admin должен добавить магазины."} />}
         {shopRows.map((shop) => {
           const shopSales = saleRows.filter((sale) => sale.shop_id === shop.id);
@@ -830,6 +854,45 @@ function Metric({ title, value, note, icon, danger = false }: { title: string; v
       <p className="mt-1 text-xs text-slate-500">{note}</p>
     </Card>
   );
+}
+
+const bakerySections: Array<{ key: BakerySection; label: string; href: string; note: string }> = [
+  { key: "overview", label: "Обзор", href: "/dashboard/bakery", note: "главные показатели" },
+  { key: "products", label: "Продажи продуктов", href: "/dashboard/bakery/products", note: "товары, фото, остатки" },
+  { key: "money", label: "Денежный отчёт", href: "/dashboard/bakery/money", note: "касса и прибыль" },
+  { key: "expenses", label: "Расходы", href: "/dashboard/bakery/expenses", note: "зп, мука, сахар" },
+  { key: "production", label: "Производство", href: "/dashboard/bakery/production", note: "выпуск за день" },
+  { key: "stock", label: "Склад", href: "/dashboard/bakery/stock", note: "остатки" },
+  { key: "suppliers", label: "Поставщики", href: "/dashboard/bakery/suppliers", note: "поставки и долги" },
+  { key: "debts", label: "Долги", href: "/dashboard/bakery/debts", note: "пока не оплачено" },
+  { key: "shops", label: "Магазины", href: "/dashboard/bakery/shops", note: "работа с точками" },
+  { key: "assistant", label: "AI ассистент", href: "/dashboard/bakery/assistant", note: "вопросы по данным" },
+];
+
+function QuickBakeryNav({ active }: { active: BakerySection }) {
+  return (
+    <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      {bakerySections.map((item) => {
+        const isActive = active === item.key;
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={`rounded-3xl border p-4 transition hover:-translate-y-0.5 ${
+              isActive ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-50 shadow-glow" : "border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.07]"
+            }`}
+          >
+            <span className="text-sm font-black">{item.label}</span>
+            <span className="mt-1 block text-xs text-slate-500">{item.note}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function sectionClass(current: BakerySection, ...visible: BakerySection[]) {
+  return visible.includes(current) ? "" : "hidden";
 }
 
 function AssistantInsight({ title, detail, tone }: { title: string; detail: string; tone: "danger" | "warning" | "success" | "info" }) {

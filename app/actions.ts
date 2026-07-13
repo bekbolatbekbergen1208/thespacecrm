@@ -538,8 +538,10 @@ export async function saveBakeryShop(formData: FormData) {
     ? await supabase.from("bakery_shops").update(payload).eq("id", id).eq("company_id", companyId)
     : await supabase.from("bakery_shops").insert({ ...payload, company_id: companyId });
 
-  if (result.error) redirect(`/dashboard/bakery?error=${encodeURIComponent(result.error.message)}`);
+  if (result.error) redirect(`/dashboard/bakery/shops?error=${encodeURIComponent(result.error.message)}`);
   revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/shops");
+  redirect("/dashboard/bakery/shops");
 }
 
 export async function saveBakeryStock(formData: FormData) {
@@ -551,7 +553,7 @@ export async function saveBakeryStock(formData: FormData) {
   const plyannikQty = Math.max(0, numberValue(formData, "plyannikQty"));
 
   if (keksQty + korzhikQty + plyannikQty <= 0) {
-    redirect(`/dashboard/bakery?date=${encodeURIComponent(stockDate)}&error=${encodeURIComponent("Введите количество хотя бы одного продукта")}`);
+    redirect(`/dashboard/bakery/production?date=${encodeURIComponent(stockDate)}&error=${encodeURIComponent("Введите количество хотя бы одного продукта")}`);
   }
 
   const payload = {
@@ -564,9 +566,10 @@ export async function saveBakeryStock(formData: FormData) {
   };
 
   const { error } = await supabase.from("bakery_stock").insert(payload);
-  if (error) redirect(`/dashboard/bakery?date=${encodeURIComponent(stockDate)}&error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/bakery/production?date=${encodeURIComponent(stockDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/bakery");
-  redirect(`/dashboard/bakery?date=${encodeURIComponent(stockDate)}&saved=stock`);
+  revalidatePath("/dashboard/bakery/production");
+  redirect(`/dashboard/bakery/production?date=${encodeURIComponent(stockDate)}&saved=stock`);
 }
 
 export async function saveBakerySupplier(formData: FormData) {
@@ -587,9 +590,10 @@ export async function saveBakerySupplier(formData: FormData) {
   };
 
   const { error } = await supabase.from("bakery_suppliers").insert(payload);
-  if (error) redirect(`/dashboard/bakery?date=${encodeURIComponent(supplyDate)}&error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/bakery/suppliers?date=${encodeURIComponent(supplyDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/bakery");
-  redirect(`/dashboard/bakery?date=${encodeURIComponent(supplyDate)}&saved=supplier`);
+  revalidatePath("/dashboard/bakery/suppliers");
+  redirect(`/dashboard/bakery/suppliers?date=${encodeURIComponent(supplyDate)}&saved=supplier`);
 }
 
 export async function saveBakeryExpense(formData: FormData) {
@@ -606,18 +610,19 @@ export async function saveBakeryExpense(formData: FormData) {
   };
 
   if (payload.amount <= 0) {
-    redirect(`/dashboard/bakery?date=${encodeURIComponent(expenseDate)}&error=${encodeURIComponent("Введите сумму расхода")}#money-report`);
+    redirect(`/dashboard/bakery/expenses?date=${encodeURIComponent(expenseDate)}&error=${encodeURIComponent("Введите сумму расхода")}`);
   }
 
   const { error } = await supabase.from("bakery_expenses").insert(payload);
-  if (error) redirect(`/dashboard/bakery?date=${encodeURIComponent(expenseDate)}&error=${encodeURIComponent(error.message)}#money-report`);
+  if (error) redirect(`/dashboard/bakery/expenses?date=${encodeURIComponent(expenseDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/bakery");
-  redirect(`/dashboard/bakery?date=${encodeURIComponent(expenseDate)}&saved=expense#money-report`);
+  revalidatePath("/dashboard/bakery/expenses");
+  redirect(`/dashboard/bakery/expenses?date=${encodeURIComponent(expenseDate)}&saved=expense`);
 }
 
 export async function saveBakeryProduct(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/bakery?error=${encodeURIComponent("Только founder/admin/manager может добавлять товары")}#products`);
+  if (!canManage(role)) redirect(`/dashboard/bakery/products?error=${encodeURIComponent("Только founder/admin/manager может добавлять товары")}`);
 
   const id = value(formData, "id");
   const payload = {
@@ -633,16 +638,17 @@ export async function saveBakeryProduct(formData: FormData) {
   };
 
   if (payload.sale_price <= 0) {
-    redirect(`/dashboard/bakery?error=${encodeURIComponent("Введите цену продажи")}#products`);
+    redirect(`/dashboard/bakery/products?error=${encodeURIComponent("Введите цену продажи")}`);
   }
 
   const result = id
     ? await supabase.from("bakery_products").update(payload).eq("id", id).eq("company_id", companyId)
     : await supabase.from("bakery_products").insert({ ...payload, company_id: companyId });
 
-  if (result.error) redirect(`/dashboard/bakery?error=${encodeURIComponent(result.error.message)}#products`);
+  if (result.error) redirect(`/dashboard/bakery/products?error=${encodeURIComponent(result.error.message)}`);
   revalidatePath("/dashboard/bakery");
-  redirect("/dashboard/bakery?saved=product#products");
+  revalidatePath("/dashboard/bakery/products");
+  redirect("/dashboard/bakery/products?saved=product");
 }
 
 export async function markBakeryProductSold(formData: FormData) {
@@ -659,7 +665,7 @@ export async function markBakeryProductSold(formData: FormData) {
     .maybeSingle();
 
   if (productError || !product) {
-    redirect(`/dashboard/bakery?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}#products`);
+    redirect(`/dashboard/bakery/products?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
   }
 
   const salePrice = Number(product.sale_price ?? 0);
@@ -679,9 +685,10 @@ export async function markBakeryProductSold(formData: FormData) {
     notes: value(formData, "notes") || null,
   });
 
-  if (error) redirect(`/dashboard/bakery?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(error.message)}#products`);
+  if (error) redirect(`/dashboard/bakery/products?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/bakery");
-  redirect(`/dashboard/bakery?date=${encodeURIComponent(saleDate)}&saved=product-sale#products`);
+  revalidatePath("/dashboard/bakery/products");
+  redirect(`/dashboard/bakery/products?date=${encodeURIComponent(saleDate)}&saved=product-sale`);
 }
 
 export async function saveBakerySale(formData: FormData) {
@@ -718,8 +725,10 @@ export async function saveBakerySale(formData: FormData) {
     comment: value(formData, "comment") || null,
   });
 
-  if (error) redirect(`/dashboard/bakery?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/bakery/shops?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/shops");
+  redirect("/dashboard/bakery/shops");
 }
 
 export async function markBakeryShopDebtPaid(formData: FormData) {
@@ -733,9 +742,10 @@ export async function markBakeryShopDebtPaid(formData: FormData) {
     .eq("shop_id", shopId)
     .gt("debt_amount", 0);
 
-  if (error) redirect(`/dashboard/bakery?error=${encodeURIComponent(error.message)}#debts`);
+  if (error) redirect(`/dashboard/bakery/debts?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/bakery");
-  redirect("/dashboard/bakery?saved=debt#debts");
+  revalidatePath("/dashboard/bakery/debts");
+  redirect("/dashboard/bakery/debts?saved=debt");
 }
 
 export async function saveCustomer(formData: FormData) {
