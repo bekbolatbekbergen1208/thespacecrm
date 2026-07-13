@@ -41,17 +41,6 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
     windows: [{ title: "Ученики", href: "/dashboard/education/students", metric: "Roster", detail: "Manage student records and cards." }, { title: "Менторы", href: "/dashboard/education/mentors", metric: "Faculty", detail: "Manage teachers, mentors, and schedules." }, { title: "Расписание", href: "/dashboard/education/schedule", metric: "Calendar", detail: "Track lessons, course work, and attendance." }, { title: "Оплаты", href: "/dashboard/education/payments", metric: "Finance", detail: "Monitor payment reports and collection priorities." }],
     reports: ["Attendance summary", "Payment follow-up", "Teacher workload", "Course progress"],
   },
-  "Robotics Education": {
-    industry: "Robotics Education",
-    slug: "education",
-    route: "/dashboard/education",
-    title: "CRM Space Robotics Education",
-    description: "Ученики, оплаты, посещаемость, расписание, пробные уроки, абонементы, менторы, зарплаты, инвентарь и отчёты.",
-    nav: roboticsNav.map(([label, href]) => [label, href]),
-    stats: [{ label: "Ученики", value: "CRM", note: "Student growth" }, { label: "Оплаты", value: "Revenue", note: "Kaspi/cash/card" }, { label: "Посещаемость", value: "Attendance", note: "Absence alerts" }],
-    windows: [{ title: "Ученики", href: "/dashboard/education/students", metric: "CRM", detail: "Карточки учеников, PDF и история." }, { title: "Оплаты", href: "/dashboard/education/payments", metric: "Finance", detail: "Оборот, задолженности, экспорт." }, { title: "Расписание", href: "/dashboard/education/schedule", metric: "Calendar", detail: "День, неделя, месяц занятий." }, { title: "Инвентарь", href: "/dashboard/education/inventory", metric: "QR", detail: "QR-коды и паспорта оборудования." }],
-    reports: ["Доход", "Посещаемость", "Пропуски", "Эффективность менторов"],
-  },
   Bakery: {
     industry: "Bakery",
     slug: "bakery",

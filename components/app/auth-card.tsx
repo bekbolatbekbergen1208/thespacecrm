@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Sparkles } from "lucide-react";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { formatAuthError } from "@/lib/auth-errors";
 
 export function AuthCard({
@@ -23,7 +24,7 @@ export function AuthCard({
     <main className="grid min-h-screen place-items-center bg-slate-950 px-5 py-10 text-white">
       <div className="premium-card w-full max-w-md p-7">
         <Link href="/" className="group inline-flex items-center gap-3 text-lg font-black tracking-wide text-white">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-cyan-200 via-white to-violet-200 text-sm text-slate-950 shadow-glow transition group-hover:scale-105">CS</span>
+          <BrandLogo className="h-10 w-10" />
           CRM.Space
         </Link>
         <p className="mt-8 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100">

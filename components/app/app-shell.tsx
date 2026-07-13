@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logout } from "@/app/actions";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
 import { NavLink } from "@/components/app/nav-link";
 import { getIndustryDashboardConfig } from "@/lib/industry-dashboard";
@@ -44,9 +45,7 @@ export function AppShell({
         <aside className="border-b border-white/10 bg-slate-950/[0.78] p-3 backdrop-blur-2xl lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:h-screen lg:w-80 lg:overflow-hidden lg:border-b-0 lg:border-r lg:p-4">
           <div className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             <Link href={dashboardRoute} className="group flex min-w-0 items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-cyan-200 via-white to-violet-200 text-sm font-black text-slate-950 shadow-glow transition group-hover:scale-105">
-                CS
-              </span>
+              <BrandLogo className="h-10 w-10" />
               <span className="min-w-0">
                 <span className="block truncate text-base font-black tracking-tight">CRM.Space</span>
                 <span className="block truncate text-xs text-slate-400">{t.premiumCrm}</span>

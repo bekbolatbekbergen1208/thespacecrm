@@ -1,6 +1,5 @@
 export const BUSINESS_INDUSTRIES = [
   "Retail Store",
-  "Robotics Education",
   "Bakery",
   "Manufacturing",
   "Education Center",
@@ -17,7 +16,6 @@ export type BusinessIndustry = (typeof BUSINESS_INDUSTRIES)[number];
 
 export const INDUSTRY_DASHBOARD_ROUTES: Record<BusinessIndustry, string> = {
   "Retail Store": "/dashboard/retail",
-  "Robotics Education": "/dashboard/education",
   Bakery: "/dashboard/bakery",
   Manufacturing: "/dashboard/bakery",
   "Education Center": "/dashboard/education",
@@ -32,6 +30,7 @@ export const INDUSTRY_DASHBOARD_ROUTES: Record<BusinessIndustry, string> = {
 
 const legacyIndustryMap: Record<string, BusinessIndustry> = {
   "Educational Center": "Education Center",
+  "Robotics Education": "Education Center",
   "Healthcare / Clinic": "Clinic / Healthcare",
   "Service Company": "Service Business",
   Manufacturing: "Manufacturing",

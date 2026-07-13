@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
 import { normalizeLocale, translateLiteral, type Locale } from "@/lib/i18n";
 import {
@@ -262,9 +263,7 @@ export default function HomePage() {
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/8 bg-slate-950/60 backdrop-blur-xl">
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8" aria-label="Main navigation">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-[8px] bg-gradient-to-br from-cyan-300 to-violet-500 text-slate-950 shadow-glow">
-              <Sparkles className="h-5 w-5" />
-            </span>
+            <BrandLogo className="h-9 w-9" />
             <span className="text-base font-bold tracking-wide text-white">CRM.Space</span>
           </Link>
           <div className="hidden items-center gap-7 text-sm text-slate-300 md:flex">
@@ -494,9 +493,7 @@ export default function HomePage() {
       <footer className="border-t border-white/10 px-5 py-10 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-[8px] bg-gradient-to-br from-cyan-300 to-violet-500 text-slate-950">
-              <Sparkles className="h-5 w-5" />
-            </span>
+            <BrandLogo className="h-9 w-9" />
             <span className="font-bold text-white">CRM.Space</span>
           </Link>
           <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400">

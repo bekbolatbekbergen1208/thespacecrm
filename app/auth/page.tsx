@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAccount, login } from "@/app/actions";
 import { Field, SubmitButton } from "@/components/app/auth-card";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
 import { formatAuthError } from "@/lib/auth-errors";
 import { getServerDictionary } from "@/lib/i18n-server";
@@ -18,7 +19,10 @@ export default async function AuthPage({
       <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[1fr_0.9fr]">
         <section className="flex min-h-[calc(100vh-5rem)] flex-col justify-center">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="text-lg font-black tracking-wide text-white">CRM.Space</Link>
+            <Link href="/" className="group flex items-center gap-3 text-lg font-black tracking-wide text-white">
+              <BrandLogo className="h-9 w-9" />
+              CRM.Space
+            </Link>
             <LanguageSwitcher />
           </div>
           <h1 className="mt-10 max-w-2xl text-4xl font-black tracking-tight sm:text-6xl">{t.createAccountOrSignIn}</h1>

@@ -8,6 +8,7 @@ alter table public.company_members
 update public.companies
 set business_type = case business_type
   when 'Educational Center' then 'Education Center'
+  when 'Robotics Education' then 'Education Center'
   when 'Healthcare / Clinic' then 'Clinic / Healthcare'
   when 'Service Company' then 'Service Business'
   when 'Production Business' then 'Manufacturing'
