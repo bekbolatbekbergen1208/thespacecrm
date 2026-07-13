@@ -2,6 +2,7 @@ export const BUSINESS_INDUSTRIES = [
   "Retail Store",
   "Robotics Education",
   "Bakery",
+  "Manufacturing",
   "Education Center",
   "Restaurant / Cafe",
   "Clinic / Healthcare",
@@ -18,6 +19,7 @@ export const INDUSTRY_DASHBOARD_ROUTES: Record<BusinessIndustry, string> = {
   "Retail Store": "/dashboard/retail",
   "Robotics Education": "/dashboard/education",
   Bakery: "/dashboard/bakery",
+  Manufacturing: "/dashboard/bakery",
   "Education Center": "/dashboard/education",
   "Restaurant / Cafe": "/dashboard/restaurant",
   "Clinic / Healthcare": "/dashboard/clinic",
@@ -32,7 +34,9 @@ const legacyIndustryMap: Record<string, BusinessIndustry> = {
   "Educational Center": "Education Center",
   "Healthcare / Clinic": "Clinic / Healthcare",
   "Service Company": "Service Business",
-  Manufacturing: "Other",
+  Manufacturing: "Manufacturing",
+  "Production Business": "Manufacturing",
+  "Производственный бизнес": "Manufacturing",
 };
 
 export function normalizeIndustry(industry?: string | null): BusinessIndustry {

@@ -186,11 +186,84 @@ create table if not exists public.bakery_product_sales (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.bakery_vehicles (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  name text not null,
+  plate_number text,
+  driver_name text,
+  phone text,
+  capacity text,
+  status text not null default 'active',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.bakery_delivery_routes (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  route_date date not null default current_date,
+  route_name text not null,
+  vehicle_id uuid references public.bakery_vehicles(id) on delete set null,
+  driver_name text,
+  shop_ids text not null default '',
+  status text not null default 'planned',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
 do $$
 declare
   tbl text;
 begin
-  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses','bakery_products','bakery_product_sales']
+  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses','bakery_products','bakery_product_sales','bakery_vehicles','bakery_delivery_routes']
+  loop
+    execute format('alter table public.%I enable row level security', tbl);
+    execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);
+    execute format('drop policy if exists "Managers can insert %1$s" on public.%1$I', tbl);
+    execute format('drop policy if exists "Managers can update %1$s" on public.%1$I', tbl);
+    execute format('drop policy if exists "Managers can delete %1$s" on public.%1$I', tbl);
+    execute format('create policy "Members can read %1$s" on public.%1$I for select using (public.is_company_member(company_id))', tbl);
+    execute format('create policy "Managers can insert %1$s" on public.%1$I for insert with check (public.has_company_role(company_id, array[''founder'',''admin'',''manager'']::public.member_role[]))', tbl);
+    execute format('create policy "Managers can update %1$s" on public.%1$I for update using (public.has_company_role(company_id, array[''founder'',''admin'',''manager'']::public.member_role[]))', tbl);
+    execute format('create policy "Managers can delete %1$s" on public.%1$I for delete using (public.has_company_role(company_id, array[''founder'',''admin'',''manager'']::public.member_role[]))', tbl);
+  end loop;
+end $$;
+
+create table if not exists public.retail_products (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  name text not null,
+  category text,
+  photo_url text,
+  photo_keywords text,
+  purchase_price numeric(12,2) not null default 0,
+  sale_price numeric(12,2) not null default 0,
+  initial_quantity integer not null default 0,
+  status text not null default 'active',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.retail_product_sales (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  product_id uuid not null references public.retail_products(id) on delete cascade,
+  sale_date date not null default current_date,
+  quantity integer not null default 1,
+  payment_method text not null default 'cash',
+  total_amount numeric(12,2) not null default 0,
+  profit_amount numeric(12,2) not null default 0,
+  customer_name text,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+do $$
+declare
+  tbl text;
+begin
+  foreach tbl in array array['retail_products','retail_product_sales']
   loop
     execute format('alter table public.%I enable row level security', tbl);
     execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);

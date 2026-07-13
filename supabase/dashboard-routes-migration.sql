@@ -10,13 +10,16 @@ set business_type = case business_type
   when 'Educational Center' then 'Education Center'
   when 'Healthcare / Clinic' then 'Clinic / Healthcare'
   when 'Service Company' then 'Service Business'
-  when 'Manufacturing' then 'Other'
+  when 'Production Business' then 'Manufacturing'
+  when 'Производственный бизнес' then 'Manufacturing'
   else business_type
 end;
 
 update public.companies
 set dashboard_route = case business_type
   when 'Retail Store' then '/dashboard/retail'
+  when 'Manufacturing' then '/dashboard/bakery'
+  when 'Bakery' then '/dashboard/bakery'
   when 'Education Center' then '/dashboard/education'
   when 'Restaurant / Cafe' then '/dashboard/restaurant'
   when 'Clinic / Healthcare' then '/dashboard/clinic'
@@ -37,4 +40,3 @@ set position = coalesce(cm.position, e.position)
 from public.employees e
 where e.company_id = cm.company_id
   and e.user_id = cm.user_id;
-

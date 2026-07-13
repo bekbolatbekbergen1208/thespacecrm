@@ -19,7 +19,7 @@ import { requireUser } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import { getRoboticsModule, type RoboticsModuleKey } from "@/lib/robotics-crm";
-import { ArrowUpDown, CalendarDays, Check, Clock, Filter, History, MessageCircle, Pencil, Search, ShieldAlert, Sparkles, Star, Table2, UserPlus, Users, X } from "lucide-react";
+import { ArrowUpDown, CalendarDays, Check, Filter, History, MessageCircle, Pencil, Search, ShieldAlert, Sparkles, Star, Table2, UserPlus, Users, X } from "lucide-react";
 
 type RoboticsRow = {
   id: string;
@@ -33,11 +33,11 @@ export async function RoboticsModulePage({
   searchParams,
 }: {
   moduleKey: RoboticsModuleKey;
-  searchParams?: Promise<{ error?: string; q?: string; status?: string; group?: string; mentor?: string; room?: string; view?: "day" | "week" | "month"; sort?: string; order?: "asc" | "desc" }>;
+  searchParams?: Promise<{ error?: string; q?: string; status?: string; group?: string; mentor?: string; room?: string; date?: string; view?: "day" | "week" | "month"; sort?: string; order?: "asc" | "desc" }>;
 }) {
   const [{ supabase, membership }, params, t, locale] = await Promise.all([
     requireUser(),
-    searchParams ?? Promise.resolve({} as { error?: string; q?: string; status?: string; group?: string; mentor?: string; room?: string; view?: "day" | "week" | "month"; sort?: string; order?: "asc" | "desc" }),
+    searchParams ?? Promise.resolve({} as { error?: string; q?: string; status?: string; group?: string; mentor?: string; room?: string; date?: string; view?: "day" | "week" | "month"; sort?: string; order?: "asc" | "desc" }),
     getServerDictionary(),
     getServerLocale(),
   ]);
@@ -156,7 +156,7 @@ export async function RoboticsModulePage({
       )}
 
       {moduleKey === "schedule" && (
-        <CalendarPanel rows={filtered} students={students} attendance={attendance} params={params} />
+        <CalendarPanel rows={filtered} students={students} groups={groups} mentors={mentors} attendance={attendance} params={params} />
       )}
 
       {moduleKey === "attendance" && (
@@ -718,107 +718,364 @@ function GroupsPanel({
 function CalendarPanel({
   rows,
   students,
+  groups,
+  mentors,
   attendance,
   params,
 }: {
   rows: RoboticsRow[];
   students: RoboticsRow[];
+  groups: RoboticsRow[];
+  mentors: RoboticsRow[];
   attendance: RoboticsRow[];
-  params: { view?: "day" | "week" | "month"; q?: string; status?: string; group?: string; mentor?: string; room?: string; sort?: string; order?: "asc" | "desc" };
+  params: { view?: "day" | "week" | "month"; q?: string; status?: string; group?: string; mentor?: string; room?: string; date?: string; sort?: string; order?: "asc" | "desc" };
 }) {
   const view = params.view ?? "week";
-  const grouped = rows.reduce<Record<string, RoboticsRow[]>>((acc, row) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const selectedDate = params.date || today;
+  const weekDates = view === "day" ? [selectedDate] : weekDatesFrom(selectedDate).slice(0, 6);
+  const timeSlots = buildTimeSlots(rows);
+  const groupOptions = unique([
+    ...groups.map((group) => String(group.name ?? "")).filter(Boolean),
+    ...students.map((student) => String(student.group_name ?? "")).filter(Boolean),
+    ...rows.map((row) => String(row.group_name ?? "")).filter(Boolean),
+  ]);
+  const mentorOptions = unique([
+    ...mentors.map((mentor) => String(mentor.name ?? "")).filter(Boolean),
+    ...rows.map((row) => String(row.mentor_name ?? "")).filter(Boolean),
+    ...students.map((student) => String(student.mentor_name ?? "")).filter(Boolean),
+  ]);
+  const roomOptions = unique(rows.map((row) => String(row.room ?? "")).filter(Boolean));
+  const monthGrouped = rows.reduce<Record<string, RoboticsRow[]>>((acc, row) => {
     const key = String(row.lesson_date ?? "Без даты");
     acc[key] = [...(acc[key] ?? []), row];
     return acc;
   }, {});
-
   return (
-    <Card className="mt-5">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="mt-5 overflow-hidden rounded-[2rem] border border-blue-200 bg-[#f6fbff] text-slate-950 shadow-2xl shadow-cyan-950/20">
+      <div className="border-b border-blue-100 bg-white/90 px-5 py-5 backdrop-blur md:px-8">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Центр управления</p>
+            <h2 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-6xl">Расписание</h2>
+          </div>
+          <form className="grid gap-2 md:grid-cols-[1fr_auto_auto] xl:min-w-[760px]">
+            <label className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input name="q" defaultValue={params.q ?? ""} placeholder="Поиск по ученикам, группам, родителям" className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+            </label>
+            <input type="hidden" name="view" value={view} />
+            <input name="date" type="date" defaultValue={selectedDate} className="h-14 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+            <button className="h-14 rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-blue-700">Найти</button>
+          </form>
+        </div>
+      </div>
+
+      <div className="px-4 py-6 md:px-6">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-100"><CalendarDays className="h-3.5 w-3.5" /> Календарь</p>
-          <h2 className="mt-1 text-xl font-black tracking-tight">Уроки, пробные занятия и события</h2>
+          <h3 className="text-2xl font-black tracking-tight text-slate-950">Таблица расписания</h3>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Заполненные и свободные занятия по дням недели и времени.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {(["day", "week", "month"] as const).map((item) => (
-            <a key={item} href={calendarHref(params, item)} className={`rounded-full border px-4 py-2 text-sm font-bold transition ${view === item ? "border-cyan-200 bg-cyan-200 text-slate-950" : "border-white/10 bg-white/[0.03] text-slate-300 hover:text-white"}`}>
+            <a key={item} href={calendarHref(params, item)} className={`rounded-full border px-4 py-2 text-sm font-black transition ${view === item ? "border-blue-300 bg-blue-600 text-white shadow-lg shadow-blue-200" : "border-blue-100 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"}`}>
               {item === "day" ? "День" : item === "week" ? "Неделя" : "Месяц"}
             </a>
           ))}
+          <span className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">{timeSlots.length} временных слотов</span>
         </div>
       </div>
 
-      <div className={`grid gap-4 ${view === "day" ? "" : view === "week" ? "xl:grid-cols-2" : "xl:grid-cols-3"}`}>
-        {Object.entries(grouped).map(([date, events]) => (
-          <div key={date} className="rounded-3xl border border-white/10 bg-slate-950/30 p-4">
-            <h3 className="mb-3 text-sm font-black uppercase tracking-[0.14em] text-slate-400">{date}</h3>
-            <div className="space-y-3">
-              {events.map((event) => {
-                const eventStudents = students.filter((student) => student.group_name === event.group_name);
-                const eventAttendance = attendance.filter((item) => item.lesson_id === event.id);
-                return (
-                  <details key={event.id} className={event.status === "cancelled" ? "rounded-2xl border border-red-300/20 bg-red-500/10 p-4" : "rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4"}>
-                    <summary className="cursor-pointer list-none">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-base font-black text-white">{String(event.group_name ?? event.student_name ?? event.topic ?? "Событие")}</p>
-                          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-300">
-                            <Clock className="h-3.5 w-3.5" />
-                            {String(event.lesson_time ?? "-")}{event.lesson_end_time ? `-${String(event.lesson_end_time)}` : ""}
-                            <span>• {String(event.mentor_name ?? "-")}</span>
-                            <span>• {String(event.room ?? "-")}</span>
-                            <span>• {eventStudents.length} учеников</span>
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-cyan-100">{String(event.event_type ?? "group")}</span>
-                      </div>
-                      <p className="mt-3 text-sm text-slate-400">{String(event.topic ?? "")}</p>
-                    </summary>
+      <form className="mb-5 grid gap-3 rounded-3xl border border-blue-100 bg-white p-4 lg:grid-cols-[1fr_1fr_1fr_auto]">
+        <input type="hidden" name="date" value={selectedDate} />
+        <input type="hidden" name="view" value={view} />
+        <input name="group" defaultValue={params.group ?? ""} placeholder="Фильтр по группе" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+        <input name="mentor" defaultValue={params.mentor ?? ""} placeholder="Фильтр по ментору" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+        <input name="room" defaultValue={params.room ?? ""} placeholder="Кабинет" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+        <button className="h-11 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700">
+          Применить
+        </button>
+      </form>
 
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-                      <p className="mb-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Посещаемость урока</p>
-                      {!eventStudents.length && <p className="text-sm text-slate-400">В этой группе пока нет учеников.</p>}
-                      {!!eventStudents.length && (
-                        <form action={saveLessonAttendance} className="space-y-3">
-                          <input type="hidden" name="lessonId" value={event.id} />
-                          <input type="hidden" name="lessonDate" value={String(event.lesson_date ?? "")} />
-                          <input type="hidden" name="groupName" value={String(event.group_name ?? "")} />
-                          <input type="hidden" name="mentorName" value={String(event.mentor_name ?? "")} />
-                          {eventStudents.map((student) => {
-                            const name = fullName(student);
-                            const current = eventAttendance.find((item) => item.student_name === name);
-                            const missed = missedLessonsCount(attendance, name);
-                            return (
-                              <div key={student.id} className={`grid gap-2 rounded-xl border p-3 md:grid-cols-[1fr_180px_1fr] ${missed >= 8 ? "border-red-300/30 bg-red-500/10" : "border-white/10 bg-white/[0.02]"}`}>
-                                <input type="hidden" name="studentName" value={name} />
-                                <div>
-                                  <p className="font-bold text-white">{name}</p>
-                                  {missed >= 8 && <p className="mt-1 text-xs font-semibold text-red-200">8+ пропусков подряд. Нужен контакт с родителем.</p>}
-                                </div>
-                                <select name={`status:${name}`} defaultValue={String(current?.status ?? "присутствовал")} className="premium-input h-10 px-3 text-sm text-white outline-none">
-                                  <option value="присутствовал">присутствовал</option>
-                                  <option value="отсутствовал">отсутствовал</option>
-                                  <option value="опоздал">опоздал</option>
-                                </select>
-                                <input name={`comment:${name}`} defaultValue={String(current?.comment ?? "")} placeholder="Комментарий" className="premium-input h-10 px-3 text-sm text-white outline-none" />
-                              </div>
-                            );
-                          })}
-                          <SmallButton>Сохранить посещаемость</SmallButton>
-                        </form>
+      <div className="overflow-auto rounded-3xl border border-blue-200 bg-white">
+        <table className="w-full min-w-[1280px] border-collapse text-left text-sm">
+          <thead className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur">
+            <tr className="border-b border-blue-100">
+              <th className="sticky left-0 z-30 w-28 bg-slate-50/95 px-4 py-5 text-xs font-black uppercase tracking-[0.08em] text-slate-900">Время</th>
+              {weekDates.map((date) => (
+                <th key={date} className="min-w-56 border-l border-blue-100 px-4 py-5">
+                  <p className="text-base font-black uppercase tracking-[0.04em] text-slate-500">{weekdayShortLabel(date)}</p>
+                  <p className="mt-1 text-xs font-black text-blue-600">{formatDateLabel(date)}</p>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-blue-100">
+            {timeSlots.map((slot) => (
+              <tr key={slot} className="min-h-40 align-top">
+                <td className="sticky left-0 z-10 bg-slate-50 px-4 py-5">
+                  <span className="text-base font-black text-slate-950">
+                    {slot}
+                  </span>
+                </td>
+                {weekDates.map((date) => {
+                  const events = rows.filter((row) => String(row.lesson_date ?? "") === date && normalizeTime(String(row.lesson_time ?? "")) === slot);
+                  return (
+                    <td key={`${date}-${slot}`} className="h-44 border-l border-blue-100 bg-white px-3 py-4 odd:bg-[#f7fbff]">
+                      {events.length ? (
+                        <div className="grid gap-3">
+                          {events.map((event) => (
+                            <ScheduleEventCard
+                              key={event.id}
+                              event={event}
+                              students={students}
+                              attendance={attendance}
+                              groupOptions={groupOptions}
+                              mentorOptions={mentorOptions}
+                              roomOptions={roomOptions}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <AddLessonCell date={date} time={slot} groupOptions={groupOptions} mentorOptions={mentorOptions} roomOptions={roomOptions} />
                       )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {view === "month" && (
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          {Object.entries(monthGrouped).map(([date, events]) => (
+            <div key={date} className="rounded-3xl border border-blue-100 bg-white p-4">
+              <h3 className="mb-3 text-sm font-black uppercase tracking-[0.14em] text-slate-500">{date}</h3>
+              <div className="space-y-2">
+                {events.map((event) => (
+                  <p key={event.id} className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-bold text-slate-900">
+                    {normalizeTime(String(event.lesson_time ?? ""))} · {String(event.group_name ?? event.topic ?? "Событие")}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!rows.length && <EmptyState text="В календаре пока нет уроков. Создайте урок вручную или сгенерируйте из расписания группы." />}
+      </div>
+    </section>
+  );
+}
+
+function ScheduleEventCard({
+  event,
+  students,
+  attendance,
+  groupOptions,
+  mentorOptions,
+  roomOptions,
+}: {
+  event: RoboticsRow;
+  students: RoboticsRow[];
+  attendance: RoboticsRow[];
+  groupOptions: string[];
+  mentorOptions: string[];
+  roomOptions: string[];
+}) {
+  const eventStudents = students.filter((student) => student.group_name === event.group_name);
+  const eventAttendance = attendance.filter((item) => item.lesson_id === event.id);
+  const occupied = Math.min(eventStudents.length, 8);
+
+  return (
+    <details className={event.status === "cancelled" ? "rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm" : "rounded-2xl border border-blue-100 bg-white p-4 shadow-sm shadow-blue-100/60"}>
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-2xl font-black text-slate-950">{normalizeTime(String(event.lesson_time ?? "-"))}</p>
+            <p className="mt-3 text-2xl font-black text-[#0b2c61]">{String(event.group_name ?? event.student_name ?? event.topic ?? "Событие")}</p>
+            <p className="mt-3 text-sm font-black leading-5 text-slate-500">
+              {String(event.topic ?? "Программа")} · {eventStudents.length || "0"} мест
+              <br />
+              · {String(event.mentor_name ?? "-")}
+            </p>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">по расписанию</span>
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+          <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(12, (occupied / 8) * 100)}%` }} />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {["М", "А", "Т", "А", "А", "И", "7", "8"].map((item, index) => (
+            <span key={`${event.id}-${item}-${index}`} className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-black ${index < occupied ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-blue-100 bg-white text-slate-400"}`}>
+              {item}
+            </span>
+          ))}
+        </div>
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <p className="text-lg font-black text-slate-500">{occupied}/8<br />мест</p>
+          <span className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">Слоты</span>
+          <span className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-black text-white">Отчет</span>
+        </div>
+      </summary>
+
+      <div className="mt-4 grid gap-4 border-t border-blue-100 pt-4">
+        <form action={saveRoboticsRecord} className="grid gap-3">
+          <input type="hidden" name="module" value="schedule" />
+          <input type="hidden" name="id" value={event.id} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input name="lesson_date" type="date" defaultValue={String(event.lesson_date ?? "")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+            <input name="lesson_time" type="time" defaultValue={normalizeTime(String(event.lesson_time ?? ""))} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+            <input name="lesson_end_time" type="time" defaultValue={normalizeTime(String(event.lesson_end_time ?? ""))} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+            <select name="event_type" defaultValue={String(event.event_type ?? "group")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none">
+              <option value="group">Группа</option>
+              <option value="trial">Пробный</option>
+              <option value="individual">Индивидуальный</option>
+              <option value="event">Событие</option>
+            </select>
+            <DatalistInput name="group_name" placeholder="Группа" defaultValue={String(event.group_name ?? "")} options={groupOptions} />
+            <input name="student_name" placeholder="Ученик" defaultValue={String(event.student_name ?? "")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+            <DatalistInput name="room" placeholder="Кабинет" defaultValue={String(event.room ?? "")} options={roomOptions} />
+            <DatalistInput name="mentor_name" placeholder="Ментор" defaultValue={String(event.mentor_name ?? "")} options={mentorOptions} />
+            <input name="topic" placeholder="Тема урока" defaultValue={String(event.topic ?? "")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none sm:col-span-2" />
+            <select name="status" defaultValue={String(event.status ?? "scheduled")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none">
+              <option value="scheduled">scheduled</option>
+              <option value="cancelled">cancelled</option>
+              <option value="moved">moved</option>
+              <option value="done">done</option>
+            </select>
+            <input name="notes" placeholder="Заметки" defaultValue={String(event.notes ?? "")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+          </div>
+          <SmallButton>Сохранить урок</SmallButton>
+        </form>
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Посещаемость урока</p>
+          {!eventStudents.length && <p className="text-sm text-slate-500">В этой группе пока нет учеников.</p>}
+          {!!eventStudents.length && (
+            <form action={saveLessonAttendance} className="space-y-3">
+              <input type="hidden" name="lessonId" value={event.id} />
+              <input type="hidden" name="lessonDate" value={String(event.lesson_date ?? "")} />
+              <input type="hidden" name="groupName" value={String(event.group_name ?? "")} />
+              <input type="hidden" name="mentorName" value={String(event.mentor_name ?? "")} />
+              {eventStudents.map((student) => {
+                const name = fullName(student);
+                const current = eventAttendance.find((item) => item.student_name === name);
+                const missed = missedLessonsCount(attendance, name);
+                return (
+                  <div key={student.id} className={`grid gap-2 rounded-xl border p-3 md:grid-cols-[1fr_160px_1fr] ${missed >= 8 ? "border-red-300 bg-red-50" : "border-blue-100 bg-white"}`}>
+                    <input type="hidden" name="studentName" value={name} />
+                    <div>
+                      <p className="font-bold text-slate-900">{name}</p>
+                      {missed >= 8 && <p className="mt-1 text-xs font-semibold text-red-200">8+ пропусков подряд. Нужен контакт с родителем.</p>}
                     </div>
-                  </details>
+                    <select name={`status:${name}`} defaultValue={String(current?.status ?? "присутствовал")} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none">
+                      <option value="присутствовал">присутствовал</option>
+                      <option value="отсутствовал">отсутствовал</option>
+                      <option value="опоздал">опоздал</option>
+                    </select>
+                    <input name={`comment:${name}`} defaultValue={String(current?.comment ?? "")} placeholder="Комментарий" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none" />
+                  </div>
                 );
               })}
-            </div>
-          </div>
-        ))}
+              <SmallButton>Сохранить посещаемость</SmallButton>
+            </form>
+          )}
+        </div>
       </div>
-      {!rows.length && <EmptyState text="В календаре пока нет уроков. Создайте урок вручную или сгенерируйте из расписания группы." />}
-    </Card>
+    </details>
   );
+}
+
+function AddLessonCell({ date, time, groupOptions, mentorOptions, roomOptions }: { date: string; time: string; groupOptions: string[]; mentorOptions: string[]; roomOptions: string[] }) {
+  return (
+    <details className="group rounded-2xl p-2">
+      <summary className="mx-auto flex min-h-12 w-full cursor-pointer list-none items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 px-4 py-2 text-center text-xl font-black text-[#0b2c61] transition hover:border-blue-400 hover:bg-blue-50">
+        + слот
+      </summary>
+      <form action={saveRoboticsRecord} className="mt-3 grid gap-2 rounded-2xl border border-blue-100 bg-white p-3 shadow-lg shadow-blue-100/60">
+        <input type="hidden" name="module" value="schedule" />
+        <input type="hidden" name="lesson_date" value={date} />
+        <input type="hidden" name="lesson_time" value={time} />
+        <input name="lesson_end_time" type="time" defaultValue={addMinutesToTime(time, 90)} className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+        <select name="event_type" defaultValue="group" className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none">
+          <option value="group">Группа</option>
+          <option value="trial">Пробный</option>
+          <option value="individual">Индивидуальный</option>
+          <option value="event">Событие</option>
+        </select>
+        <DatalistInput name="group_name" placeholder="Группа" options={groupOptions} />
+        <input name="student_name" placeholder="Ученик" className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+        <DatalistInput name="room" placeholder="Кабинет" options={roomOptions} />
+        <DatalistInput name="mentor_name" placeholder="Ментор" options={mentorOptions} />
+        <input name="topic" required placeholder="Тема урока" className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+        <input type="hidden" name="status" value="scheduled" />
+        <input name="notes" placeholder="Заметки" className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+        <SmallButton>Добавить</SmallButton>
+      </form>
+    </details>
+  );
+}
+
+function DatalistInput({ name, placeholder, defaultValue = "", options }: { name: string; placeholder: string; defaultValue?: string; options: string[] }) {
+  const listId = `${name}-${placeholder}`.replace(/\W/g, "-");
+  return (
+    <>
+      <input name={name} list={listId} placeholder={placeholder} defaultValue={defaultValue} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 outline-none" />
+      <datalist id={listId}>
+        {options.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+function weekDatesFrom(dateString: string) {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return weekDatesFrom(new Date().toISOString().slice(0, 10));
+  const day = date.getDay() || 7;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - day + 1);
+  return Array.from({ length: 7 }).map((_, index) => {
+    const next = new Date(monday);
+    next.setDate(monday.getDate() + index);
+    return next.toISOString().slice(0, 10);
+  });
+}
+
+function buildTimeSlots(rows: RoboticsRow[]) {
+  const defaults = ["09:00", "10:30", "11:00", "12:30", "14:00", "15:30", "16:00", "17:30", "18:00", "19:30", "20:00", "21:00"];
+  const fromRows = rows.map((row) => normalizeTime(String(row.lesson_time ?? ""))).filter(Boolean);
+  return unique([...defaults, ...fromRows]).sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeTime(value: string) {
+  const match = value.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "";
+  return `${match[1].padStart(2, "0")}:${match[2]}`;
+}
+
+function addMinutesToTime(time: string, minutes: number) {
+  const [hoursRaw, minutesRaw] = normalizeTime(time).split(":");
+  const date = new Date();
+  date.setHours(Number(hoursRaw || 0), Number(minutesRaw || 0) + minutes, 0, 0);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function weekdayShortLabel(dateString: string) {
+  const labels = ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"];
+  const date = new Date(`${dateString}T00:00:00`);
+  return labels[date.getDay()] ?? dateString;
+}
+
+function formatDateLabel(dateString: string) {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
 }
 
 function MiniStat({ label, value }: { label: string; value: string | number }) {
@@ -904,13 +1161,14 @@ function missedLessonsCount(attendance: RoboticsRow[], studentName: string) {
   return missed;
 }
 
-function calendarHref(params: { q?: string; status?: string; group?: string; mentor?: string; room?: string; sort?: string; order?: "asc" | "desc" }, view: "day" | "week" | "month") {
+function calendarHref(params: { q?: string; status?: string; group?: string; mentor?: string; room?: string; date?: string; sort?: string; order?: "asc" | "desc" }, view: "day" | "week" | "month") {
   const query = new URLSearchParams();
   if (params.q) query.set("q", params.q);
   if (params.status) query.set("status", params.status);
   if (params.group) query.set("group", params.group);
   if (params.mentor) query.set("mentor", params.mentor);
   if (params.room) query.set("room", params.room);
+  if (params.date) query.set("date", params.date);
   if (params.sort) query.set("sort", params.sort);
   if (params.order) query.set("order", params.order);
   query.set("view", view);

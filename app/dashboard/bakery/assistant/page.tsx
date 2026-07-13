@@ -1,4 +1,4 @@
-import { BakeryDashboardContent } from "@/app/dashboard/bakery/page";
+import { BakeryDashboardContent } from "@/components/app/bakery-dashboard-content";
 
 export default function BakeryAssistantPage({
   searchParams,
