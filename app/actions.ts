@@ -88,8 +88,8 @@ const FREE_EMPLOYEE_LIMIT = 5;
 const FREE_CUSTOMER_LIMIT = 500;
 const businessIndustrySchema = z.enum(BUSINESS_INDUSTRIES);
 const BAKERY_PRICES = {
-  keks: 450,
-  korzhik: 500,
+  keks: 650,
+  korzhik: 550,
   plyannik: 550,
 } as const;
 

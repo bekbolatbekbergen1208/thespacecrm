@@ -27,8 +27,8 @@ export type BakerySection =
   | "shops";
 
 const prices = {
-  keks: 450,
-  korzhik: 500,
+  keks: 650,
+  korzhik: 550,
   plyannik: 550,
 };
 
