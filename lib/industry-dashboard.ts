@@ -62,6 +62,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
       ["Пекарня", "/dashboard/bakery"],
       ["AI ассистент", "/dashboard/bakery#assistant"],
       ["Поиск и день", "/dashboard/bakery#reports"],
+      ["Продажи продуктов", "/dashboard/bakery#products"],
       ["Денежный отчёт", "/dashboard/bakery#money-report"],
       ["Расходы", "/dashboard/bakery#expenses"],
       ["Производство", "/dashboard/bakery#production"],

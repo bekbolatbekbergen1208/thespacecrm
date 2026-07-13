@@ -293,6 +293,8 @@ export type Database = {
       bakery_sales: RoboticsTable;
       bakery_suppliers: RoboticsTable;
       bakery_expenses: RoboticsTable;
+      bakery_products: RoboticsTable;
+      bakery_product_sales: RoboticsTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -157,11 +157,40 @@ create table if not exists public.bakery_expenses (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.bakery_products (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  name text not null,
+  category text,
+  photo_url text,
+  photo_keywords text,
+  purchase_price numeric(12,2) not null default 0,
+  sale_price numeric(12,2) not null default 0,
+  initial_quantity integer not null default 0,
+  status text not null default 'active',
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.bakery_product_sales (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  product_id uuid not null references public.bakery_products(id) on delete cascade,
+  sale_date date not null default current_date,
+  quantity integer not null default 1,
+  payment_method text not null default 'cash',
+  total_amount numeric(12,2) not null default 0,
+  profit_amount numeric(12,2) not null default 0,
+  customer_name text,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
 do $$
 declare
   tbl text;
 begin
-  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses']
+  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses','bakery_products','bakery_product_sales']
   loop
     execute format('alter table public.%I enable row level security', tbl);
     execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);
@@ -178,6 +207,12 @@ end $$;
 drop policy if exists "Members can insert bakery_sales" on public.bakery_sales;
 create policy "Members can insert bakery_sales"
 on public.bakery_sales
+for insert
+with check (public.is_company_member(company_id));
+
+drop policy if exists "Members can insert bakery_product_sales" on public.bakery_product_sales;
+create policy "Members can insert bakery_product_sales"
+on public.bakery_product_sales
 for insert
 with check (public.is_company_member(company_id));
 

@@ -615,6 +615,75 @@ export async function saveBakeryExpense(formData: FormData) {
   redirect(`/dashboard/bakery?date=${encodeURIComponent(expenseDate)}&saved=expense#money-report`);
 }
 
+export async function saveBakeryProduct(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/bakery?error=${encodeURIComponent("Только founder/admin/manager может добавлять товары")}#products`);
+
+  const id = value(formData, "id");
+  const payload = {
+    name: z.string().min(2).parse(value(formData, "name")),
+    category: value(formData, "category") || null,
+    photo_url: value(formData, "photoUrl") || null,
+    photo_keywords: value(formData, "photoKeywords") || null,
+    purchase_price: Math.max(0, numberValue(formData, "purchasePrice")),
+    sale_price: Math.max(0, numberValue(formData, "salePrice")),
+    initial_quantity: Math.max(0, numberValue(formData, "initialQuantity")),
+    status: value(formData, "status") || "active",
+    notes: value(formData, "notes") || null,
+  };
+
+  if (payload.sale_price <= 0) {
+    redirect(`/dashboard/bakery?error=${encodeURIComponent("Введите цену продажи")}#products`);
+  }
+
+  const result = id
+    ? await supabase.from("bakery_products").update(payload).eq("id", id).eq("company_id", companyId)
+    : await supabase.from("bakery_products").insert({ ...payload, company_id: companyId });
+
+  if (result.error) redirect(`/dashboard/bakery?error=${encodeURIComponent(result.error.message)}#products`);
+  revalidatePath("/dashboard/bakery");
+  redirect("/dashboard/bakery?saved=product#products");
+}
+
+export async function markBakeryProductSold(formData: FormData) {
+  const { supabase, companyId } = await companyContext();
+  const productId = z.string().uuid().parse(value(formData, "productId"));
+  const saleDate = value(formData, "saleDate") || new Date().toISOString().slice(0, 10);
+  const quantity = Math.max(1, numberValue(formData, "quantity"));
+
+  const { data: product, error: productError } = await supabase
+    .from("bakery_products")
+    .select("id, purchase_price, sale_price, initial_quantity")
+    .eq("company_id", companyId)
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (productError || !product) {
+    redirect(`/dashboard/bakery?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}#products`);
+  }
+
+  const salePrice = Number(product.sale_price ?? 0);
+  const purchasePrice = Number(product.purchase_price ?? 0);
+  const totalAmount = salePrice * quantity;
+  const profitAmount = Math.max(0, salePrice - purchasePrice) * quantity;
+
+  const { error } = await supabase.from("bakery_product_sales").insert({
+    company_id: companyId,
+    product_id: productId,
+    sale_date: saleDate,
+    quantity,
+    payment_method: value(formData, "paymentMethod") || "cash",
+    total_amount: totalAmount,
+    profit_amount: profitAmount,
+    customer_name: value(formData, "customerName") || null,
+    notes: value(formData, "notes") || null,
+  });
+
+  if (error) redirect(`/dashboard/bakery?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(error.message)}#products`);
+  revalidatePath("/dashboard/bakery");
+  redirect(`/dashboard/bakery?date=${encodeURIComponent(saleDate)}&saved=product-sale#products`);
+}
+
 export async function saveBakerySale(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const shopId = z.string().uuid().parse(value(formData, "shopId"));

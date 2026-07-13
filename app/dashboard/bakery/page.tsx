@@ -1,9 +1,9 @@
-import { markBakeryShopDebtPaid, saveBakeryExpense, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier } from "@/app/actions";
+import { markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { AlertTriangle, Bot, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Download, Lightbulb, MessageCircle, PackagePlus, RotateCcw, Search, Truck } from "lucide-react";
+import { AlertTriangle, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MessageCircle, PackagePlus, RotateCcw, Search, ShoppingCart, Truck } from "lucide-react";
 
 type BakeryRow = {
   id: string;
@@ -40,12 +40,14 @@ export default async function BakeryDashboardPage({
   const query = (params.q ?? "").toLowerCase();
   const aiQuestion = (params.aiq ?? "").trim();
 
-  const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }] = await Promise.all([
+  const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }, { data: products }, { data: productSales }] = await Promise.all([
     supabase.from("bakery_shops").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
     supabase.from("bakery_stock").select("*").eq("company_id", companyId).order("stock_date", { ascending: false }).limit(500),
     supabase.from("bakery_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000),
     supabase.from("bakery_suppliers").select("*").eq("company_id", companyId).order("last_supply_date", { ascending: false }).limit(200),
     supabase.from("bakery_expenses").select("*").eq("company_id", companyId).order("expense_date", { ascending: false }).limit(1000),
+    supabase.from("bakery_products").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
+    supabase.from("bakery_product_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000),
   ]);
 
   const shopRows = ((shops ?? []) as BakeryRow[]).filter((shop) => {
@@ -60,6 +62,14 @@ export default async function BakeryDashboardPage({
     return !query || text.includes(query);
   });
   const expenseRows = (expenses ?? []) as BakeryRow[];
+  const productSaleRows = (productSales ?? []) as BakeryRow[];
+  const productRows = ((products ?? []) as BakeryRow[]).filter((product) => {
+    const text = [product.name, product.category, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
+    return !query || text.includes(query);
+  });
+  const productSummaries = productRows.map((product) => summarizeProduct(product, productSaleRows));
+  const dayProductSales = productSaleRows.filter((sale) => sale.sale_date === selectedDate);
+  const productReport = sumProductSales(dayProductSales);
   const supplierDebt = supplierRows.reduce((sum, supplier) => sum + Number(supplier.debt_amount ?? 0), 0);
   const stockTotals = sumStock(stockRows);
   const saleTotals = sumSales(saleRows);
@@ -69,7 +79,7 @@ export default async function BakeryDashboardPage({
   const dayExpenses = expenseRows.filter((expense) => expense.expense_date === selectedDate);
   const expenseTotals = sumExpenses(dayExpenses);
   const totalExpenseAmount = Object.values(expenseTotals).reduce((sum, value) => sum + value, 0);
-  const dayProfit = dayTotals.cash + dayTotals.kaspi - totalExpenseAmount;
+  const dayProfit = dayTotals.cash + dayTotals.kaspi + productReport.revenue - totalExpenseAmount;
   const moneyCsvHref = buildMoneyCsvHref({
     selectedDate,
     dayTotals,
@@ -133,11 +143,13 @@ export default async function BakeryDashboardPage({
       {params.saved === "supplier" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Поставщик сохранён.</p>}
       {params.saved === "debt" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Долг закрыт.</p>}
       {params.saved === "expense" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Расход сохранён.</p>}
+      {params.saved === "product" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар сохранён.</p>}
+      {params.saved === "product-sale" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продажа товара сохранена.</p>}
 
       <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <Metric title="Магазины" value={shopRows.length} note={query ? "найдено" : "точек"} icon={<Building2 className="h-4 w-4" />} />
+        <Metric title="Товары" value={productRows.length} note={query ? "найдено" : "каталог"} icon={<ShoppingCart className="h-4 w-4" />} />
         <Metric title="Продукция за день" value={dayStock.keks + dayStock.korzhik + dayStock.plyannik} note={selectedDate} icon={<PackagePlus className="h-4 w-4" />} />
-        <Metric title="Сумма за день" value={`${dayTotals.expected.toLocaleString()} ₸`} note={`Нал ${dayTotals.cash.toLocaleString()} / Kaspi ${dayTotals.kaspi.toLocaleString()}`} icon={<CircleDollarSign className="h-4 w-4" />} />
+        <Metric title="Сумма за день" value={`${(dayTotals.expected + productReport.revenue).toLocaleString()} ₸`} note={`Товары ${productReport.revenue.toLocaleString()} ₸`} icon={<CircleDollarSign className="h-4 w-4" />} />
         <Metric title="Общий долг" value={`${totalShopDebt.toLocaleString()} ₸`} note="пока не оплачено" icon={<Truck className="h-4 w-4" />} danger={totalShopDebt > 0} />
         <Metric title="Прибыль" value={`${dayProfit.toLocaleString()} ₸`} note="оплачено минус расходы" icon={<CircleDollarSign className="h-4 w-4" />} danger={dayProfit < 0} />
         <Metric title="Возвраты" value={dayTotals.returns} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} />
@@ -216,12 +228,12 @@ export default async function BakeryDashboardPage({
         <form className="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-end">
           <label>
             <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-              <Search className="h-3.5 w-3.5" /> Поиск магазина
+              <Search className="h-3.5 w-3.5" /> Поиск продукта или магазина
             </span>
             <input
               name="q"
               defaultValue={params.q ?? ""}
-              placeholder="Магазин, адрес, телефон, водитель, поставщик"
+              placeholder="Название, категория, фото-слова, магазин, поставщик"
               className="premium-input h-12 w-full px-4 text-sm text-white outline-none"
             />
           </label>
@@ -241,6 +253,141 @@ export default async function BakeryDashboardPage({
             Найти
           </button>
         </form>
+      </Card>
+
+      <Card id="products" className="mb-5 scroll-mt-6 overflow-hidden">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Продажи продуктов</p>
+            <h2 className="mt-1 text-xl font-black text-white">Каталог товаров, остатки, продажа и отчёты</h2>
+            <p className="mt-1 text-sm text-slate-400">Добавьте товар с фото, закупочной ценой, продажной ценой и количеством. Потом отмечайте проданные товары.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/10 bg-slate-950/35 px-3 py-1 text-xs font-black text-slate-200">
+              За {selectedDate}: {productReport.quantity} шт
+            </span>
+            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-black text-emerald-100">
+              Прибыль {productReport.profit.toLocaleString()} ₸
+            </span>
+          </div>
+        </div>
+
+        <div className="mb-5 grid gap-4 md:grid-cols-4">
+          <MoneyBox label="Товарная выручка" value={productReport.revenue} note="по выбранному дню" />
+          <MoneyBox label="Товарная прибыль" value={productReport.profit} note="продажа - закуп" />
+          <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Продано</p>
+            <p className="mt-2 text-2xl font-black tracking-tight text-white">{productReport.quantity} шт</p>
+            <p className="mt-1 text-xs text-slate-500">за день</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Остаток</p>
+            <p className="mt-2 text-2xl font-black tracking-tight text-white">{productSummaries.reduce((sum, item) => sum + item.remaining, 0)} шт</p>
+            <p className="mt-1 text-xs text-slate-500">по найденным товарам</p>
+          </div>
+        </div>
+
+        {editable && (
+          <form action={saveBakeryProduct} className="mb-5 rounded-3xl border border-cyan-300/15 bg-slate-950/35 p-4">
+            <h3 className="text-lg font-black text-white">Добавить продукт</h3>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <Field label="Название продукта" name="name" />
+              <Field label="Категория" name="category" required={false} />
+              <Field label="Фото URL" name="photoUrl" required={false} />
+              <Field label="Слова для поиска по фото" name="photoKeywords" required={false} />
+              <Field label="Закупочная цена" name="purchasePrice" type="number" defaultValue={0} />
+              <Field label="Цена продажи" name="salePrice" type="number" defaultValue={0} />
+              <Field label="Количество" name="initialQuantity" type="number" defaultValue={0} />
+              <Select label="Статус" name="status" defaultValue="active">
+                <option value="active">Активный</option>
+                <option value="hidden">Скрыт</option>
+              </Select>
+              <div className="md:col-span-4"><Textarea label="Комментарий" name="notes" /></div>
+              <div className="md:col-span-4"><SmallButton>Сохранить продукт</SmallButton></div>
+            </div>
+          </form>
+        )}
+
+        <div className="grid gap-4 xl:grid-cols-3">
+          {!productSummaries.length && (
+            <div className="xl:col-span-3">
+              <EmptyState text={query ? "По этому поиску товары не найдены." : "Добавьте первый продукт, чтобы вести продажи по товарам."} />
+            </div>
+          )}
+          {productSummaries.map((item) => (
+            <div key={item.product.id} className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+              <div className="flex gap-4">
+                <ProductPhoto url={String(item.product.photo_url ?? "")} name={String(item.product.name ?? "Товар")} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-black text-white">{String(item.product.name ?? "Товар")}</p>
+                  <p className="mt-1 text-xs font-bold text-slate-500">{String(item.product.category ?? "Без категории")}</p>
+                  <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                    <MiniPill label="Купили" value={`${Number(item.product.purchase_price ?? 0).toLocaleString()} ₸`} />
+                    <MiniPill label="Продажа" value={`${Number(item.product.sale_price ?? 0).toLocaleString()} ₸`} />
+                    <MiniPill label="Продано" value={`${item.sold} шт`} />
+                    <MiniPill label="Осталось" value={`${item.remaining} шт`} danger={item.remaining <= 2} />
+                  </div>
+                </div>
+              </div>
+
+              <form action={markBakeryProductSold} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <input type="hidden" name="productId" value={item.product.id} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Дата" name="saleDate" type="date" defaultValue={selectedDate} />
+                  <Field label="Сколько продали" name="quantity" type="number" defaultValue={1} />
+                  <Select label="Оплата" name="paymentMethod" defaultValue="cash">
+                    <option value="cash">Нал</option>
+                    <option value="kaspi">Kaspi</option>
+                    <option value="card">Карта</option>
+                    <option value="transfer">Перевод</option>
+                  </Select>
+                  <Field label="Покупатель" name="customerName" required={false} />
+                  <div className="sm:col-span-2"><SmallButton>Назначить проданным</SmallButton></div>
+                </div>
+              </form>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-white/10">
+          <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+            <thead className="sticky top-0 bg-slate-950/90 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Товар</th>
+                <th className="px-4 py-3">Категория</th>
+                <th className="px-4 py-3">Купили</th>
+                <th className="px-4 py-3">Продажа</th>
+                <th className="px-4 py-3">Начало</th>
+                <th className="px-4 py-3">Продано</th>
+                <th className="px-4 py-3">Осталось</th>
+                <th className="px-4 py-3">Прибыль</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10">
+              {!productSummaries.length && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-slate-400" colSpan={8}>Товаров пока нет.</td>
+                </tr>
+              )}
+              {productSummaries.map((item) => (
+                <tr key={item.product.id} className="bg-slate-950/20 transition hover:bg-white/[0.04]">
+                  <td className="px-4 py-4 font-black text-white">{String(item.product.name ?? "Товар")}</td>
+                  <td className="px-4 py-4 text-slate-300">{String(item.product.category ?? "-")}</td>
+                  <td className="px-4 py-4 text-slate-300">{Number(item.product.purchase_price ?? 0).toLocaleString()} ₸</td>
+                  <td className="px-4 py-4 text-cyan-100">{Number(item.product.sale_price ?? 0).toLocaleString()} ₸</td>
+                  <td className="px-4 py-4 text-slate-300">{Number(item.product.initial_quantity ?? 0)}</td>
+                  <td className="px-4 py-4 font-black text-white">{item.sold}</td>
+                  <td className="px-4 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-black ${item.remaining <= 2 ? "bg-red-500 text-white" : "bg-emerald-300 text-emerald-950"}`}>
+                      {item.remaining}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 font-black text-emerald-100">{item.profit.toLocaleString()} ₸</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       <Card id="money-report" className="mb-5 scroll-mt-6">
@@ -1050,6 +1197,49 @@ function MiniPill({ label, value, danger = false }: { label: string; value: stri
       <span className="mt-1 block font-black">{value}</span>
     </span>
   );
+}
+
+function ProductPhoto({ url, name }: { url: string; name: string }) {
+  if (!url) {
+    return (
+      <div className="grid h-24 w-24 shrink-0 place-items-center rounded-3xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+        <ImageIcon className="h-7 w-7" />
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={name}
+      className="h-24 w-24 shrink-0 rounded-3xl border border-white/10 object-cover"
+    />
+  );
+}
+
+function summarizeProduct(product: BakeryRow, sales: BakeryRow[]) {
+  const productSales = sales.filter((sale) => sale.product_id === product.id);
+  const sold = productSales.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0);
+  const revenue = productSales.reduce((sum, sale) => sum + Number(sale.total_amount ?? 0), 0);
+  const profit = productSales.reduce((sum, sale) => sum + Number(sale.profit_amount ?? 0), 0);
+  const initial = Number(product.initial_quantity ?? 0);
+
+  return {
+    product,
+    sold,
+    revenue,
+    profit,
+    remaining: initial - sold,
+  };
+}
+
+function sumProductSales(rows: BakeryRow[]) {
+  return rows.reduce((sum, row) => ({
+    quantity: sum.quantity + Number(row.quantity ?? 0),
+    revenue: sum.revenue + Number(row.total_amount ?? 0),
+    profit: sum.profit + Number(row.profit_amount ?? 0),
+  }), { quantity: 0, revenue: 0, profit: 0 });
 }
 
 function sumStock(rows: BakeryRow[]) {
