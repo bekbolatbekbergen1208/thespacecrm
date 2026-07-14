@@ -41,7 +41,7 @@ export default async function RetailDashboardPage({
   const dayReport = sumSales(daySales);
   const totalReport = sumSales(saleRows);
   const totalRemaining = allProducts.reduce((sum, product) => sum + summarizeProduct(product, saleRows).remaining, 0);
-  const csvHref = buildRetailCsvHref(selectedDate, daySales, allProducts);
+  const csvHref = `/dashboard/retail/export?date=${encodeURIComponent(selectedDate)}`;
   const last7Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 6) && sale.sale_date <= selectedDate);
   const last30Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 29) && sale.sale_date <= selectedDate);
   const last7Report = sumSales(last7Sales);
@@ -91,7 +91,7 @@ export default async function RetailDashboardPage({
       </div>
 
       <Card className="mb-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_240px_180px]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_240px_180px_180px]">
           <form action="/dashboard/retail" className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
@@ -109,7 +109,11 @@ export default async function RetailDashboardPage({
           </form>
           <a href={csvHref} download={`retail-profit-report-${selectedDate}.csv`} className="premium-button h-12 justify-center bg-white px-4 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
             <Download className="h-4 w-4" />
-            Скачать CSV
+            CSV за день
+          </a>
+          <a href="/dashboard/retail/export?all=1" download="retail-profit-report-all.csv" className="premium-button h-12 justify-center border border-cyan-300/20 bg-cyan-300/10 px-4 text-sm text-cyan-100">
+            <Download className="h-4 w-4" />
+            CSV вся история
           </a>
         </div>
       </Card>
@@ -540,46 +544,4 @@ function paymentLabel(method: string) {
     transfer: "Перевод",
   };
   return labels[method] ?? method;
-}
-
-function csvCell(value: unknown) {
-  return `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
-}
-
-function buildRetailCsvHref(selectedDate: string, sales: RetailRow[], products: RetailRow[]) {
-  const rows = [[
-    "sale_date",
-    "purchase_date",
-    "product",
-    "category",
-    "quantity",
-    "purchase_price",
-    "sale_price",
-    "revenue",
-    "profit",
-    "payment",
-    "customer",
-  ]];
-  for (const sale of sales) {
-    const product = products.find((item) => item.id === sale.product_id);
-    const quantity = Number(sale.quantity ?? 0);
-    const purchasePrice = Number(product?.purchase_price ?? 0);
-    const salePrice = Number(product?.sale_price ?? 0);
-    const revenue = Number(sale.total_amount ?? salePrice * quantity);
-    const profit = Number(sale.profit_amount ?? (salePrice - purchasePrice) * quantity);
-    rows.push([
-      String(sale.sale_date ?? selectedDate),
-      String(product?.created_at ?? "").slice(0, 10),
-      String(product?.name ?? ""),
-      String(product?.category ?? ""),
-      String(sale.quantity ?? 0),
-      String(purchasePrice),
-      String(salePrice),
-      String(revenue),
-      String(profit),
-      String(sale.payment_method ?? ""),
-      String(sale.customer_name ?? ""),
-    ]);
-  }
-  return `data:text/csv;charset=utf-8,${encodeURIComponent(rows.map((row) => row.map(csvCell).join(",")).join("\n"))}`;
 }
