@@ -64,6 +64,7 @@ export const roboticsNav = [
   ["Абонементы", "/dashboard/education/subscriptions"],
   ["Группы", "/dashboard/education/groups"],
   ["Менторы", "/dashboard/education/mentors"],
+  ["Договор", "/dashboard/education/contract"],
   ["Семьи", "/dashboard/education/families"],
   ["Фидбек", "/dashboard/education/feedback"],
   ["Обучение", "/dashboard/education/learning"],

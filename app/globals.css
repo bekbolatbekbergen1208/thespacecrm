@@ -235,6 +235,59 @@ textarea {
   min-width: 9rem;
 }
 
+.contract-input,
+.contract-text-input,
+.contract-sign-line,
+.contract-inline-field input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  padding: 0.75rem 0.9rem;
+  color: #0f172a;
+  font-weight: 700;
+  outline: none;
+}
+
+.contract-input-strong {
+  border-color: #67e8f9;
+  background: #ecfeff;
+  font-size: 1.05rem;
+}
+
+.contract-text-input {
+  display: inline-block;
+  width: min(18rem, 100%);
+  margin: 0 0.25rem;
+  padding: 0.2rem 0.45rem;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+.contract-text-input-short {
+  width: 8rem;
+}
+
+.contract-inline-field {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(10rem, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contract-inline-field input {
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.75rem;
+}
+
+.contract-sign-line {
+  margin-left: 0.5rem;
+  width: calc(100% - 4rem);
+  border-width: 0 0 1px;
+  border-radius: 0;
+  padding: 0.25rem 0.35rem;
+}
+
 @media print {
   @page {
     size: A4 landscape;
@@ -306,8 +359,41 @@ textarea {
   .print-area h2,
   .print-area h3,
   .print-area p,
-  .print-area span {
+  .print-area span,
+  .print-area label {
     color: #0f172a !important;
+  }
+
+  .contract-paper {
+    max-width: none !important;
+    font-size: 11px !important;
+  }
+
+  .contract-paper h1 {
+    font-size: 22px !important;
+    color: #0f172a !important;
+  }
+
+  .contract-paper h2 {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 7px 10px !important;
+  }
+
+  .contract-paper section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .contract-input,
+  .contract-text-input,
+  .contract-sign-line,
+  .contract-inline-field input {
+    border-color: #64748b !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
   }
 }
 
