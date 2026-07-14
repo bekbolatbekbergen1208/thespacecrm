@@ -1,5 +1,6 @@
 import { markRetailProductSold, saveRetailProduct } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
+import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
 import { BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, Search, ShoppingCart, TrendingUp } from "lucide-react";
@@ -141,7 +142,7 @@ export default async function RetailDashboardPage({
           <form action={saveRetailProduct} className="grid gap-4 xl:grid-cols-4">
             <Field label="Название" name="name" />
             <Field label="Категория" name="category" required={false} />
-            <Field label="Фото URL" name="photoUrl" required={false} />
+            <CameraPhotoField label="Фото товара" />
             <Field label="Фото-поиск / ключи" name="photoKeywords" required={false} />
             <Field label="Закупили за" name="purchasePrice" type="number" defaultValue={0} />
             <Field label="Продадите за" name="salePrice" type="number" defaultValue={0} />

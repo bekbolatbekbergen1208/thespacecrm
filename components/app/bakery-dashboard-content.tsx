@@ -1,6 +1,7 @@
 import { markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryVehicle } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
+import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
 import { normalizeIndustry } from "@/lib/industries";
@@ -330,7 +331,7 @@ export async function BakeryDashboardContent({
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               <Field label="Название продукта" name="name" />
               <Field label="Категория" name="category" required={false} />
-              <Field label="Фото URL" name="photoUrl" required={false} />
+              <CameraPhotoField label="Фото продукта" />
               <Field label="Слова для поиска по фото" name="photoKeywords" required={false} />
               <Field label="Закупочная цена" name="purchasePrice" type="number" defaultValue={0} />
               <Field label="Цена продажи" name="salePrice" type="number" defaultValue={0} />
