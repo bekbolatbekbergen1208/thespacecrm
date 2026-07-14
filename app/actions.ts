@@ -1293,6 +1293,66 @@ export async function saveLessonAttendance(formData: FormData) {
   revalidatePath("/dashboard/education/subscriptions");
 }
 
+export async function saveSingleLessonAttendance(formData: FormData) {
+  const { supabase, companyId } = await companyContext();
+  const lessonId = z.string().uuid().parse(value(formData, "lessonId"));
+  const lessonDate = value(formData, "lessonDate");
+  const groupName = value(formData, "groupName");
+  const mentorName = value(formData, "mentorName");
+  const studentName = value(formData, "studentName");
+  const status = value(formData, "status") || "присутствовал";
+
+  const existing = await supabase
+    .from("robotics_attendance")
+    .select("id, status")
+    .eq("company_id", companyId)
+    .eq("lesson_id", lessonId)
+    .eq("student_name", studentName)
+    .maybeSingle();
+
+  const payload = {
+    company_id: companyId,
+    lesson_id: lessonId,
+    student_name: studentName,
+    lesson_date: lessonDate,
+    status,
+    group_name: groupName || null,
+    mentor_name: mentorName || null,
+    comment: value(formData, "comment") || null,
+  };
+
+  const result = existing.data?.id
+    ? await supabase.from("robotics_attendance").update(payload).eq("id", existing.data.id).eq("company_id", companyId)
+    : await supabase.from("robotics_attendance").insert(payload);
+
+  if (result.error) redirect(`/dashboard/education/schedule?error=${encodeURIComponent(result.error.message)}`);
+
+  const wasAlreadyCounted = existing.data?.status === "присутствовал" || existing.data?.status === "опоздал";
+  if (!wasAlreadyCounted && (status === "присутствовал" || status === "опоздал")) {
+    const subscription = await supabase
+      .from("robotics_subscriptions")
+      .select("id, remaining_lessons")
+      .eq("company_id", companyId)
+      .eq("student_name", studentName)
+      .gt("remaining_lessons", 0)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subscription.data?.id) {
+      await supabase
+        .from("robotics_subscriptions")
+        .update({ remaining_lessons: Math.max(0, Number(subscription.data.remaining_lessons ?? 0) - 1) })
+        .eq("id", subscription.data.id)
+        .eq("company_id", companyId);
+    }
+  }
+
+  revalidatePath("/dashboard/education/schedule");
+  revalidatePath("/dashboard/education/attendance");
+  revalidatePath("/dashboard/education/subscriptions");
+}
+
 export async function saveJournalAttendance(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const studentName = z.string().min(1).parse(value(formData, "studentName"));

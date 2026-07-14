@@ -8,6 +8,7 @@ import {
   saveLessonAttendance,
   saveJournalAttendance,
   saveRoboticsRecord,
+  saveSingleLessonAttendance,
   saveStudentGrade,
 } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
@@ -751,6 +752,27 @@ function CalendarPanel({
     acc[key] = [...(acc[key] ?? []), row];
     return acc;
   }, {});
+  const lessonIds = new Set(rows.map((row) => String(row.id ?? "")).filter(Boolean));
+  const scheduledPairs = rows.flatMap((row) => {
+    const groupStudents = students.filter((student) => student.group_name === row.group_name);
+    if (groupStudents.length) return groupStudents.map((student) => `${row.id}:${fullName(student)}`);
+    const studentName = String(row.student_name ?? "").trim();
+    return studentName ? [`${row.id}:${studentName}`] : [];
+  });
+  const markedPairs = new Set(
+    attendance
+      .filter((item) => lessonIds.has(String(item.lesson_id ?? "")))
+      .map((item) => `${item.lesson_id}:${item.student_name}`),
+  );
+  const visibleScheduleStudents = unique(
+    rows.flatMap((row) => {
+      const groupStudents = students.filter((student) => student.group_name === row.group_name);
+      if (groupStudents.length) return groupStudents.map(fullName);
+      return [String(row.student_name ?? "")].filter(Boolean);
+    }),
+  );
+  const markedCount = scheduledPairs.filter((pair) => markedPairs.has(pair)).length;
+  const notMarkedCount = Math.max(0, scheduledPairs.length - markedCount);
   return (
     <section className="mt-5 overflow-hidden rounded-[2rem] border border-blue-200 bg-[#f6fbff] text-slate-950 shadow-2xl shadow-cyan-950/20">
       <div className="border-b border-blue-100 bg-white/90 px-5 py-5 backdrop-blur md:px-8">
@@ -772,6 +794,29 @@ function CalendarPanel({
       </div>
 
       <div className="px-4 py-6 md:px-6">
+        <div className="mb-5 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Ученики в расписании</p>
+            <h3 className="mt-2 text-3xl font-black text-slate-950">{visibleScheduleStudents.length}</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {visibleScheduleStudents.slice(0, 8).map((name) => (
+                <span key={name} className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{name}</span>
+              ))}
+              {visibleScheduleStudents.length > 8 && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">+{visibleScheduleStudents.length - 8}</span>}
+            </div>
+          </div>
+          <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Посещаемость отмечена</p>
+            <h3 className="mt-2 text-3xl font-black text-emerald-800">{markedCount}</h3>
+            <p className="mt-2 text-sm font-semibold text-emerald-700">Записи уже сохранены в журнале.</p>
+          </div>
+          <div className={`rounded-3xl border p-4 shadow-sm ${notMarkedCount ? "border-red-200 bg-red-50" : "border-blue-100 bg-white"}`}>
+            <p className={`text-xs font-black uppercase tracking-[0.14em] ${notMarkedCount ? "text-red-600" : "text-slate-500"}`}>Нужно отметить</p>
+            <h3 className={`mt-2 text-3xl font-black ${notMarkedCount ? "text-red-700" : "text-slate-950"}`}>{notMarkedCount}</h3>
+            <p className="mt-2 text-sm font-semibold text-slate-500">Открой урок и нажми Был / Нет / Опоздал.</p>
+          </div>
+        </div>
+
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="text-2xl font-black tracking-tight text-slate-950">Таблица расписания</h3>
@@ -889,9 +934,10 @@ function ScheduleEventCard({
   const eventStudents = students.filter((student) => student.group_name === event.group_name);
   const eventAttendance = attendance.filter((item) => item.lesson_id === event.id);
   const occupied = Math.min(eventStudents.length, 8);
+  const rosterSlots: Array<RoboticsRow | null> = eventStudents.length ? eventStudents : Array.from({ length: 8 }, () => null);
 
   return (
-    <details className={event.status === "cancelled" ? "rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm" : "rounded-2xl border border-blue-100 bg-white p-4 shadow-sm shadow-blue-100/60"}>
+    <details open className={event.status === "cancelled" ? "rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm" : "rounded-2xl border border-blue-100 bg-white p-4 shadow-sm shadow-blue-100/60"}>
       <summary className="cursor-pointer list-none">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -909,11 +955,14 @@ function ScheduleEventCard({
           <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(12, (occupied / 8) * 100)}%` }} />
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {["М", "А", "Т", "А", "А", "И", "7", "8"].map((item, index) => (
-            <span key={`${event.id}-${item}-${index}`} className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-black ${index < occupied ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-blue-100 bg-white text-slate-400"}`}>
-              {item}
+          {rosterSlots.slice(0, 8).map((student, index) => {
+            const name = student ? fullName(student) : "";
+            const current = eventAttendance.find((item) => item.student_name === name);
+            return (
+            <span key={`${event.id}-${student?.id ?? index}`} title={name || "Свободное место"} className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-black ${student ? attendancePillClass(String(current?.status ?? "")) : "border-blue-100 bg-white text-slate-400"}`}>
+              {student ? initials(name) : index + 1}
             </span>
-          ))}
+          );})}
         </div>
         <div className="mt-4 flex items-end justify-between gap-3">
           <p className="text-lg font-black text-slate-500">{occupied}/8<br />мест</p>
@@ -923,6 +972,56 @@ function ScheduleEventCard({
       </summary>
 
       <div className="mt-4 grid gap-4 border-t border-blue-100 pt-4">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ученики и быстрая посещаемость</p>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500">{eventAttendance.length}/{eventStudents.length} отмечено</span>
+          </div>
+          {!eventStudents.length && <p className="text-sm text-slate-500">В этой группе пока нет учеников. Добавьте учеников в группу, и они появятся здесь автоматически.</p>}
+          {!!eventStudents.length && (
+            <div className="grid gap-2">
+              {eventStudents.map((student) => {
+                const name = fullName(student);
+                const current = eventAttendance.find((item) => item.student_name === name);
+                const missed = missedLessonsCount(attendance, name);
+                return (
+                  <div key={student.id} className={`grid gap-2 rounded-2xl border p-3 xl:grid-cols-[1fr_auto] ${missed >= 8 ? "border-red-300 bg-red-50" : "border-blue-100 bg-white"}`}>
+                    <div>
+                      <p className="font-black text-slate-950">{name}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {String(student.parent_name ?? "Родитель не указан")} · {String(student.parent_phone ?? student.whatsapp ?? "нет телефона")}
+                      </p>
+                      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-black ${attendanceStatusClass(String(current?.status ?? ""))}`}>
+                        {current?.status ? `Сейчас: ${current.status}` : "Еще не отмечен"}
+                      </p>
+                      {missed >= 8 && <p className="mt-2 text-xs font-black text-red-600">8+ пропусков подряд</p>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 xl:justify-end">
+                      {[
+                        ["присутствовал", "Был"],
+                        ["отсутствовал", "Нет"],
+                        ["опоздал", "Опоздал"],
+                      ].map(([status, label]) => (
+                        <form key={`${student.id}-${status}`} action={saveSingleLessonAttendance}>
+                          <input type="hidden" name="lessonId" value={event.id} />
+                          <input type="hidden" name="lessonDate" value={String(event.lesson_date ?? "")} />
+                          <input type="hidden" name="groupName" value={String(event.group_name ?? "")} />
+                          <input type="hidden" name="mentorName" value={String(event.mentor_name ?? "")} />
+                          <input type="hidden" name="studentName" value={name} />
+                          <input type="hidden" name="status" value={status} />
+                          <button className={`rounded-full border px-3 py-2 text-xs font-black transition ${quickAttendanceButtonClass(status, String(current?.status ?? ""))}`}>
+                            {label}
+                          </button>
+                        </form>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <form action={saveRoboticsRecord} className="grid gap-3">
           <input type="hidden" name="module" value="schedule" />
           <input type="hidden" name="id" value={event.id} />
@@ -1140,6 +1239,32 @@ function statusShort(status: string) {
   if (status === "опоздал") return "О";
   if (status === "отсутствовал") return "Н";
   return status.slice(0, 1).toUpperCase();
+}
+
+function initials(name: string) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "");
+}
+
+function attendancePillClass(status: string) {
+  if (status === "присутствовал") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "опоздал") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (status === "отсутствовал") return "border-red-200 bg-red-50 text-red-700";
+  return "border-blue-100 bg-blue-50 text-blue-700";
+}
+
+function attendanceStatusClass(status: string) {
+  if (status === "присутствовал") return "bg-emerald-100 text-emerald-800";
+  if (status === "опоздал") return "bg-amber-100 text-amber-800";
+  if (status === "отсутствовал") return "bg-red-100 text-red-800";
+  return "bg-slate-100 text-slate-600";
+}
+
+function quickAttendanceButtonClass(status: string, currentStatus: string) {
+  const active = status === currentStatus;
+  if (status === "присутствовал") return active ? "border-emerald-600 bg-emerald-600 text-white" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100";
+  if (status === "опоздал") return active ? "border-amber-500 bg-amber-500 text-white" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100";
+  return active ? "border-red-600 bg-red-600 text-white" : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100";
 }
 
 function daysBetween(from: string, to: string) {
