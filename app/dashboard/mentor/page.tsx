@@ -2,6 +2,7 @@ import Link from "next/link";
 import { saveMentorLessonSession } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { SmallButton } from "@/components/app/forms";
+import { PrintButton } from "@/components/app/print-button";
 import { canManage, requireUser } from "@/lib/auth";
 import { BookOpenCheck, CalendarDays, ClipboardList, Star, Users } from "lucide-react";
 
@@ -47,9 +48,16 @@ export default async function MentorWorkspacePage({
     : null;
   const todayAttendance = (attendance ?? []) as Row[];
   const todayGrades = (grades ?? []) as Row[];
+  const printableGroups = visibleGroups.map((group) => {
+    const groupName = String(group.name ?? "");
+    const rows = ((students ?? []) as Row[]).filter((student) => String(student.group_name ?? "") === groupName);
+    return { group, students: rows };
+  });
 
   return (
     <>
+      <PrintButton label="Печать журнала" floating />
+
       <PageHeader
         title="Кабинет ментора"
         description="Группы, тема урока, посещаемость и оценки учеников на сегодня."
@@ -71,6 +79,73 @@ export default async function MentorWorkspacePage({
           <p className="mt-2 text-2xl font-black text-white">{today}</p>
         </Card>
       </div>
+
+      <section className="print-area mb-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Журнал ментора</p>
+            <h2 className="mt-2 text-2xl font-black text-white">Печатный журнал посещаемости</h2>
+            <p className="mt-2 text-sm text-slate-400">{mentorName} · {today}</p>
+          </div>
+          <PrintButton />
+        </div>
+
+        <div className="grid gap-5">
+          {!printableGroups.length && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-400">Нет групп для печати.</p>}
+          {printableGroups.map(({ group, students: groupRows }) => (
+            <div key={group.id} className="mentor-print-group overflow-hidden rounded-3xl border border-white/10 bg-slate-950/35">
+              <div className="border-b border-white/10 px-4 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-white">{String(group.name ?? "Группа")}</h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {String(group.course ?? "Курс")} · {String(group.room ?? "Кабинет")} · {String(group.start_time ?? "--:--")} - {String(group.end_time ?? "--:--")}
+                    </p>
+                  </div>
+                  <p className="text-sm font-black text-cyan-100">{groupRows.length} учеников</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="mentor-print-table min-w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-xs uppercase tracking-[0.12em] text-slate-500">
+                      <th className="w-12 px-4 py-3">№</th>
+                      <th className="px-4 py-3">Имя ученика</th>
+                      <th className="px-4 py-3">Родитель</th>
+                      <th className="px-4 py-3">Телефон</th>
+                      <th className="px-4 py-3">Был</th>
+                      <th className="px-4 py-3">Нет</th>
+                      <th className="px-4 py-3">Опоздал</th>
+                      <th className="px-4 py-3">Оценка</th>
+                      <th className="px-4 py-3">Комментарий</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {!groupRows.length && (
+                      <tr>
+                        <td colSpan={9} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
+                      </tr>
+                    )}
+                    {groupRows.map((student, index) => (
+                      <tr key={student.id}>
+                        <td className="px-4 py-3 font-black text-slate-400">{index + 1}</td>
+                        <td className="px-4 py-3 font-black text-white">{fullName(student)}</td>
+                        <td className="px-4 py-3 text-slate-300">{String(student.parent_name ?? "")}</td>
+                        <td className="px-4 py-3 text-slate-300">{String(student.parent_phone ?? student.whatsapp ?? "")}</td>
+                        <td className="px-4 py-3"><span className="print-check-box" /></td>
+                        <td className="px-4 py-3"><span className="print-check-box" /></td>
+                        <td className="px-4 py-3"><span className="print-check-box" /></td>
+                        <td className="px-4 py-3"><span className="print-line" /></td>
+                        <td className="px-4 py-3"><span className="print-wide-line" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <section className="space-y-3">

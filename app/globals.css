@@ -216,6 +216,101 @@ textarea {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
 }
 
+.print-check-box {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: 0.25rem;
+}
+
+.print-line,
+.print-wide-line {
+  display: block;
+  height: 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.65);
+}
+
+.print-wide-line {
+  min-width: 9rem;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+
+  .print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .mentor-print-group {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    margin-bottom: 12px !important;
+  }
+
+  .mentor-print-table {
+    width: 100% !important;
+    color: #0f172a !important;
+    font-size: 11px !important;
+  }
+
+  .mentor-print-table th,
+  .mentor-print-table td {
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    padding: 7px !important;
+  }
+
+  .mentor-print-table thead tr {
+    background: #e2e8f0 !important;
+  }
+
+  .print-area h2,
+  .print-area h3,
+  .print-area p,
+  .print-area span {
+    color: #0f172a !important;
+  }
+}
+
 .perspective-phone {
   transform: rotateX(54deg) rotateZ(-34deg) rotateY(0deg);
   transform-style: preserve-3d;
