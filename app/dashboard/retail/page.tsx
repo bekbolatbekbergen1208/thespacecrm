@@ -2,7 +2,7 @@ import { markRetailProductSold, saveRetailProduct } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Search, ShoppingCart } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, Search, ShoppingCart, TrendingUp } from "lucide-react";
 
 type RetailRow = {
   id: string;
@@ -40,6 +40,23 @@ export default async function RetailDashboardPage({
   const totalReport = sumSales(saleRows);
   const totalRemaining = allProducts.reduce((sum, product) => sum + summarizeProduct(product, saleRows).remaining, 0);
   const csvHref = buildRetailCsvHref(selectedDate, daySales, allProducts);
+  const last7Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 6) && sale.sale_date <= selectedDate);
+  const last30Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 29) && sale.sale_date <= selectedDate);
+  const last7Report = sumSales(last7Sales);
+  const last30Report = sumSales(last30Sales);
+  const paymentSplit = groupSalesByPayment(last30Sales);
+  const topProducts = summaries
+    .filter((item) => item.sold > 0)
+    .sort((a, b) => b.sold - a.sold || b.profit - a.profit)
+    .slice(0, 5);
+  const lowStockProducts = summaries
+    .filter((item) => item.remaining <= 3)
+    .sort((a, b) => a.remaining - b.remaining)
+    .slice(0, 6);
+  const inventoryCost = summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.purchase_price ?? 0), 0);
+  const inventorySaleValue = summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.sale_price ?? 0), 0);
+  const margin = totalReport.revenue ? Math.round((totalReport.profit / totalReport.revenue) * 100) : 0;
+  const dailyTrend = lastSevenDays(selectedDate).map((date) => ({ date, ...sumSales(saleRows.filter((sale) => sale.sale_date === date)) }));
 
   return (
     <>
@@ -83,6 +100,21 @@ export default async function RetailDashboardPage({
           </a>
         </div>
       </Card>
+
+      <RetailReportsSection
+        selectedDate={selectedDate}
+        dayReport={dayReport}
+        last7Report={last7Report}
+        last30Report={last30Report}
+        totalReport={totalReport}
+        margin={margin}
+        inventoryCost={inventoryCost}
+        inventorySaleValue={inventorySaleValue}
+        paymentSplit={paymentSplit}
+        topProducts={topProducts}
+        lowStockProducts={lowStockProducts}
+        dailyTrend={dailyTrend}
+      />
 
       {editable && (
         <Card className="mb-5">
@@ -234,6 +266,166 @@ export default async function RetailDashboardPage({
   );
 }
 
+function RetailReportsSection({
+  selectedDate,
+  dayReport,
+  last7Report,
+  last30Report,
+  totalReport,
+  margin,
+  inventoryCost,
+  inventorySaleValue,
+  paymentSplit,
+  topProducts,
+  lowStockProducts,
+  dailyTrend,
+}: {
+  selectedDate: string;
+  dayReport: ReturnType<typeof sumSales>;
+  last7Report: ReturnType<typeof sumSales>;
+  last30Report: ReturnType<typeof sumSales>;
+  totalReport: ReturnType<typeof sumSales>;
+  margin: number;
+  inventoryCost: number;
+  inventorySaleValue: number;
+  paymentSplit: Array<{ method: string; quantity: number; revenue: number; profit: number }>;
+  topProducts: Array<ReturnType<typeof summarizeProduct>>;
+  lowStockProducts: Array<ReturnType<typeof summarizeProduct>>;
+  dailyTrend: Array<{ date: string; quantity: number; revenue: number; profit: number }>;
+}) {
+  const maxTrend = Math.max(...dailyTrend.map((item) => item.revenue), 1);
+  return (
+    <Card className="mb-5 scroll-mt-6" id="reports">
+      <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <p className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
+            Retail Reports
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-white">Отчёты магазина</h2>
+          <p className="mt-2 text-sm text-slate-400">День, 7 дней, 30 дней, прибыль, оплата, топ товаров и остатки.</p>
+        </div>
+        <a href="#reports" className="premium-button h-10 justify-center border border-cyan-300/20 bg-cyan-300/10 px-4 text-sm text-cyan-100">
+          <BarChart3 className="h-4 w-4" />
+          {selectedDate}
+        </a>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <ReportMetric title="Сегодня" value={`${dayReport.revenue.toLocaleString()} ₸`} note={`${dayReport.quantity} шт · прибыль ${dayReport.profit.toLocaleString()} ₸`} icon={<CalendarDays className="h-4 w-4" />} />
+        <ReportMetric title="7 дней" value={`${last7Report.revenue.toLocaleString()} ₸`} note={`${last7Report.quantity} шт · прибыль ${last7Report.profit.toLocaleString()} ₸`} icon={<TrendingUp className="h-4 w-4" />} />
+        <ReportMetric title="30 дней" value={`${last30Report.revenue.toLocaleString()} ₸`} note={`${last30Report.quantity} шт · прибыль ${last30Report.profit.toLocaleString()} ₸`} icon={<PieChart className="h-4 w-4" />} />
+        <ReportMetric title="Маржа" value={`${margin}%`} note={`вся история: ${totalReport.revenue.toLocaleString()} ₸`} icon={<Percent className="h-4 w-4" />} danger={margin < 15 && totalReport.revenue > 0} />
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-black text-white">Динамика за 7 дней</h3>
+              <p className="text-sm text-slate-500">Выручка по дням до выбранной даты.</p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">{last7Report.revenue.toLocaleString()} ₸</span>
+          </div>
+          <div className="grid gap-3">
+            {dailyTrend.map((item) => (
+              <div key={item.date} className="grid gap-2 sm:grid-cols-[92px_1fr_120px] sm:items-center">
+                <p className="text-xs font-black text-slate-400">{item.date.slice(5)}</p>
+                <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-400" style={{ width: `${Math.max(4, (item.revenue / maxTrend) * 100)}%` }} />
+                </div>
+                <p className="text-right text-sm font-black text-white">{item.revenue.toLocaleString()} ₸</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+          <h3 className="font-black text-white">Стоимость склада</h3>
+          <p className="mt-1 text-sm text-slate-500">Сколько товара осталось по закупке и продаже.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <MiniReport label="Закупочная" value={`${inventoryCost.toLocaleString()} ₸`} />
+            <MiniReport label="Продажная" value={`${inventorySaleValue.toLocaleString()} ₸`} />
+          </div>
+          <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-100/70">Потенциальная прибыль склада</p>
+            <p className="mt-2 text-2xl font-black text-cyan-50">{Math.max(0, inventorySaleValue - inventoryCost).toLocaleString()} ₸</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-3">
+        <ReportList title="Топ товаров" empty="Продаж пока нет.">
+          {topProducts.map((item, index) => (
+            <ReportListRow
+              key={item.product.id}
+              title={`${index + 1}. ${item.product.name}`}
+              note={`${item.sold} шт · прибыль ${item.profit.toLocaleString()} ₸`}
+              value={`${Number(item.product.sale_price ?? 0).toLocaleString()} ₸`}
+            />
+          ))}
+        </ReportList>
+        <ReportList title="Оплата за 30 дней" empty="Оплаты за период нет.">
+          {paymentSplit.map((item) => (
+            <ReportListRow key={item.method} title={paymentLabel(item.method)} note={`${item.quantity} шт · прибыль ${item.profit.toLocaleString()} ₸`} value={`${item.revenue.toLocaleString()} ₸`} />
+          ))}
+        </ReportList>
+        <ReportList title="Низкий остаток" empty="Критических остатков нет.">
+          {lowStockProducts.map((item) => (
+            <ReportListRow
+              key={item.product.id}
+              title={String(item.product.name ?? "Товар")}
+              note={`продано ${item.sold} шт`}
+              value={`${item.remaining} шт`}
+              danger={item.remaining <= 0}
+            />
+          ))}
+        </ReportList>
+      </div>
+    </Card>
+  );
+}
+
+function ReportMetric({ title, value, note, icon, danger = false }: { title: string; value: string; note: string; icon: React.ReactNode; danger?: boolean }) {
+  return (
+    <div className={`rounded-3xl border p-4 ${danger ? "border-red-300/25 bg-red-500/[0.08]" : "border-white/10 bg-slate-950/35"}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className={`grid h-10 w-10 place-items-center rounded-2xl border ${danger ? "border-red-300/30 bg-red-500/10 text-red-100" : "border-cyan-300/20 bg-cyan-300/10 text-cyan-100"}`}>
+          {icon}
+        </span>
+      </div>
+      <p className="mt-4 text-xs font-black uppercase tracking-[0.14em] text-slate-500">{title}</p>
+      <p className="mt-2 text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-400">{note}</p>
+    </div>
+  );
+}
+
+function ReportList({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+      <h3 className="font-black text-white">{title}</h3>
+      <div className="mt-4 grid gap-2">
+        {hasChildren ? children : <p className="rounded-2xl bg-white/[0.04] p-3 text-sm text-slate-500">{empty}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ReportListRow({ title, note, value, danger = false }: { title: string; note: string; value: string; danger?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-3 ${danger ? "border-red-300/25 bg-red-500/10" : "border-white/10 bg-white/[0.035]"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-black text-white">{title}</p>
+          <p className="mt-1 text-xs text-slate-500">{note}</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-black ${danger ? "bg-red-500 text-white" : "bg-cyan-300/10 text-cyan-100"}`}>{value}</span>
+      </div>
+    </div>
+  );
+}
+
 function Metric({ title, value, note, icon, danger = false }: { title: string; value: string | number; note: string; icon: React.ReactNode; danger?: boolean }) {
   return (
     <Card className={`${danger ? "border-red-300/25 bg-red-500/[0.08]" : ""}`}>
@@ -290,6 +482,40 @@ function sumSales(sales: RetailRow[]) {
     }),
     { quantity: 0, revenue: 0, profit: 0 },
   );
+}
+
+function dateMinus(dateString: string, days: number) {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateString;
+  date.setDate(date.getDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+function lastSevenDays(dateString: string) {
+  return Array.from({ length: 7 }).map((_, index) => dateMinus(dateString, 6 - index));
+}
+
+function groupSalesByPayment(sales: RetailRow[]) {
+  const map = new Map<string, { method: string; quantity: number; revenue: number; profit: number }>();
+  for (const sale of sales) {
+    const method = String(sale.payment_method ?? "unknown");
+    const current = map.get(method) ?? { method, quantity: 0, revenue: 0, profit: 0 };
+    current.quantity += Number(sale.quantity ?? 0);
+    current.revenue += Number(sale.total_amount ?? 0);
+    current.profit += Number(sale.profit_amount ?? 0);
+    map.set(method, current);
+  }
+  return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
+}
+
+function paymentLabel(method: string) {
+  const labels: Record<string, string> = {
+    cash: "Наличные",
+    kaspi: "Kaspi",
+    card: "Карта",
+    transfer: "Перевод",
+  };
+  return labels[method] ?? method;
 }
 
 function csvCell(value: unknown) {
