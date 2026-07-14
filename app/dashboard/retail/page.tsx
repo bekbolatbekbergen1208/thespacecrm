@@ -231,6 +231,7 @@ export default async function RetailDashboardPage({
                           {editable && (
                             <form action={deleteRetailProduct} className="mt-2">
                               <input type="hidden" name="productId" value={product.id} />
+                              <input type="hidden" name="selectedDate" value={selectedDate} />
                               <button className="premium-button h-9 w-full justify-center border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100 hover:bg-red-500/20">
                                 <Trash2 className="h-3.5 w-3.5" />
                                 Удалить товар
