@@ -23,10 +23,11 @@ export default async function RetailDashboardPage({
   const selectedDate = params.date || today;
   const query = (params.q ?? "").toLowerCase();
 
-  const [{ data: products }, { data: sales }] = await Promise.all([
+  const [{ data: products, error: productsError }, { data: sales, error: salesError }] = await Promise.all([
     supabase.from("retail_products").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
     supabase.from("retail_product_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000),
   ]);
+  const schemaError = [productsError, salesError].find((error) => error?.message?.toLowerCase().includes("schema cache") || error?.message?.toLowerCase().includes("retail_products"));
 
   const saleRows = (sales ?? []) as RetailRow[];
   const allProducts = (products ?? []) as RetailRow[];
@@ -66,6 +67,16 @@ export default async function RetailDashboardPage({
       />
 
       {params.error && <p className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{params.error}</p>}
+      {schemaError && (
+        <div className="mb-4 rounded-3xl border border-yellow-300/30 bg-yellow-300/10 p-4 text-sm leading-6 text-yellow-50">
+          <p className="font-black">Retail Store таблицы ещё не созданы в Supabase.</p>
+          <p className="mt-1 text-yellow-100/90">
+            Откройте Supabase SQL Editor и выполните файл <b>supabase/retail-store.sql</b>. После выполнения таблицы
+            <b> retail_products</b> и <b>retail_product_sales</b> появятся в schema cache.
+          </p>
+          <p className="mt-2 rounded-2xl bg-slate-950/40 px-3 py-2 font-mono text-xs text-yellow-100">{schemaError.message}</p>
+        </div>
+      )}
       {params.saved === "product" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар сохранён.</p>}
       {params.saved === "sale" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продажа сохранена.</p>}
 
