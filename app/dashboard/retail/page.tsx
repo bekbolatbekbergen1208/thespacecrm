@@ -1,9 +1,9 @@
-import { markRetailProductSold, saveRetailProduct } from "@/app/actions";
+import { deleteRetailProduct, markRetailProductSold, saveRetailProduct } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, Search, ShoppingCart, TrendingUp } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
 type RetailRow = {
   id: string;
@@ -80,6 +80,7 @@ export default async function RetailDashboardPage({
       )}
       {params.saved === "product" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар сохранён.</p>}
       {params.saved === "sale" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продажа сохранена.</p>}
+      {params.saved === "deleted" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар удалён.</p>}
 
       <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Metric title="Товары" value={allProducts.length} note={query ? "найдено по поиску" : "в каталоге"} icon={<Package className="h-4 w-4" />} />
@@ -223,6 +224,15 @@ export default async function RetailDashboardPage({
                             <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
                             <SmallButton>Продано</SmallButton>
                           </form>
+                          {editable && (
+                            <form action={deleteRetailProduct} className="mt-2">
+                              <input type="hidden" name="productId" value={product.id} />
+                              <button className="premium-button h-9 w-full justify-center border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100 hover:bg-red-500/20">
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Удалить товар
+                              </button>
+                            </form>
+                          )}
                         </td>
                       </tr>
                     ))}

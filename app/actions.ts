@@ -774,6 +774,18 @@ export async function saveRetailProduct(formData: FormData) {
   redirect("/dashboard/retail?saved=product");
 }
 
+export async function deleteRetailProduct(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может удалять товары")}`);
+
+  const productId = z.string().uuid().parse(value(formData, "productId"));
+  const { error } = await supabase.from("retail_products").delete().eq("id", productId).eq("company_id", companyId);
+
+  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/retail");
+  redirect("/dashboard/retail?saved=deleted");
+}
+
 export async function markRetailProductSold(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const productId = z.string().uuid().parse(value(formData, "productId"));
