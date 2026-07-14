@@ -3,19 +3,45 @@
 import { useRef, useState } from "react";
 import { Camera, ImagePlus, X } from "lucide-react";
 
+async function decodeImage(file: File) {
+  if ("createImageBitmap" in window) {
+    try {
+      return await createImageBitmap(file);
+    } catch {
+      // Fall back to HTMLImageElement below for browsers that expose but fail createImageBitmap.
+    }
+  }
+
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not read image"));
+    };
+    image.src = objectUrl;
+  });
+}
+
 export function CameraPhotoField({
   name = "photoUrl",
   label = "Фото",
+  defaultValue = "",
 }: {
   name?: string;
   label?: string;
+  defaultValue?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState("");
+  const [preview, setPreview] = useState(defaultValue);
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
-    const image = await createImageBitmap(file);
+    const image = await decodeImage(file);
     const maxSize = 900;
     const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
     const canvas = document.createElement("canvas");
