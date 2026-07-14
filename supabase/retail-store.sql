@@ -3,6 +3,7 @@ create table if not exists public.retail_products (
   company_id uuid not null references public.companies(id) on delete cascade,
   name text not null,
   category text,
+  address text,
   photo_url text,
   photo_keywords text,
   purchase_price numeric(12,2) not null default 0,
@@ -12,6 +13,8 @@ create table if not exists public.retail_products (
   notes text,
   created_at timestamptz not null default now()
 );
+
+alter table public.retail_products add column if not exists address text;
 
 create table if not exists public.retail_product_sales (
   id uuid primary key default gen_random_uuid(),

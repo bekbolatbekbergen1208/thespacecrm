@@ -752,6 +752,7 @@ export async function saveRetailProduct(formData: FormData) {
   const payload = {
     name: z.string().min(2).parse(value(formData, "name")),
     category: value(formData, "category") || null,
+    address: value(formData, "address") || null,
     photo_url: value(formData, "photoUrl") || null,
     photo_keywords: value(formData, "photoKeywords") || null,
     purchase_price: Math.max(0, numberValue(formData, "purchasePrice")),

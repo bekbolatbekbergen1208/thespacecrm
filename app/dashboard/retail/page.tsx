@@ -33,7 +33,7 @@ export default async function RetailDashboardPage({
   const saleRows = (sales ?? []) as RetailRow[];
   const allProducts = (products ?? []) as RetailRow[];
   const productRows = allProducts.filter((product) => {
-    const text = [product.name, product.category, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
+    const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
     return !query || text.includes(query);
   });
   const summaries = productRows.map((product) => summarizeProduct(product, saleRows));
@@ -141,12 +141,13 @@ export default async function RetailDashboardPage({
             </span>
             <div>
               <h2 className="text-xl font-black text-white">Добавить товар</h2>
-              <p className="text-sm text-slate-400">Заполните название, фото, закупочную/продажную цену и количество.</p>
+              <p className="text-sm text-slate-400">Заполните название, адрес, фото, закупочную/продажную цену и количество.</p>
             </div>
           </div>
           <form action={saveRetailProduct} className="grid gap-4 xl:grid-cols-4">
             <Field label="Название" name="name" />
             <Field label="Категория" name="category" required={false} />
+            <Field label="Адрес" name="address" required={false} />
             <CameraPhotoField label="Фото товара" />
             <Field label="Фото-поиск / ключи" name="photoKeywords" required={false} />
             <Field label="Закупили за" name="purchasePrice" type="number" defaultValue={0} />
@@ -173,6 +174,7 @@ export default async function RetailDashboardPage({
             <div>
               <h2 className="text-xl font-black text-white">Таблица товаров</h2>
               <p className="text-sm text-slate-400">Можно назначить товар проданным и сразу увидеть остаток.</p>
+              {!editable && <p className="mt-1 text-xs font-semibold text-yellow-100/80">Удаление товаров доступно только founder/admin/manager.</p>}
             </div>
             <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">{productRows.length} товаров</span>
           </div>
@@ -198,6 +200,7 @@ export default async function RetailDashboardPage({
                             <div>
                               <p className="font-black text-white">{product.name}</p>
                               <p className="text-xs text-slate-500">{product.category || "Без категории"}</p>
+                              {product.address && <p className="mt-1 text-xs font-semibold text-cyan-100/80">{product.address}</p>}
                             </div>
                           </div>
                         </td>
@@ -213,6 +216,16 @@ export default async function RetailDashboardPage({
                           <p className="mt-2 text-xs text-slate-500">прибыль {profit.toLocaleString()} ₸</p>
                         </td>
                         <td className="px-4 py-4">
+                          {editable && (
+                            <form action={deleteRetailProduct} className="mb-3">
+                              <input type="hidden" name="productId" value={product.id} />
+                              <input type="hidden" name="selectedDate" value={selectedDate} />
+                              <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Удалить товар
+                              </button>
+                            </form>
+                          )}
                           <form action={markRetailProductSold} className="grid min-w-56 gap-2">
                             <input type="hidden" name="productId" value={product.id} />
                             <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
@@ -228,16 +241,6 @@ export default async function RetailDashboardPage({
                             <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
                             <SmallButton>Продано</SmallButton>
                           </form>
-                          {editable && (
-                            <form action={deleteRetailProduct} className="mt-2">
-                              <input type="hidden" name="productId" value={product.id} />
-                              <input type="hidden" name="selectedDate" value={selectedDate} />
-                              <button className="premium-button h-9 w-full justify-center border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100 hover:bg-red-500/20">
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Удалить товар
-                              </button>
-                            </form>
-                          )}
                         </td>
                       </tr>
                     ))}
