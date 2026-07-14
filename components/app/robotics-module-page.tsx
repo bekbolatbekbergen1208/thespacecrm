@@ -561,6 +561,7 @@ function GroupsPanel({
   payments: RoboticsRow[];
   attendance: RoboticsRow[];
 }) {
+  const today = new Date().toISOString().slice(0, 10);
   const mentorNames = unique([
     ...mentors.map((mentor) => String(mentor.name ?? "")).filter(Boolean),
     ...employees
@@ -584,16 +585,22 @@ function GroupsPanel({
           const groupLessons = lessons.filter((lesson) => lesson.group_name === groupName);
           const groupPayments = payments.filter((payment) => payment.group_name === groupName || groupStudents.some((student) => fullName(student) === payment.student_name));
           const groupAttendance = attendance.filter((item) => item.group_name === groupName);
+          const groupTodayAttendance = groupAttendance.filter((item) => item.lesson_date === today);
+          const groupPresentToday = groupTodayAttendance.filter((item) => item.status === "присутствовал" || item.status === "опоздал").length;
           const availableStudents = students.filter((student) => student.group_name !== groupName);
           const unassigned = students.filter((student) => !student.group_name);
 
           return (
-            <div key={group.id} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <details key={group.id} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 transition open:border-cyan-300/25 open:bg-cyan-300/[0.035]">
+              <summary className="cursor-pointer list-none">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <h3 className="text-lg font-black text-white">{groupName}</h3>
                   <p className="mt-1 text-sm text-slate-400">{String(group.course ?? "-")} • {String(group.level ?? "-")} • {String(group.room ?? "-")}</p>
                   <p className="mt-2 text-sm text-slate-300">{String(group.schedule_days ?? "-")} {String(group.start_time ?? "")}-{String(group.end_time ?? "")}</p>
+                  <p className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-slate-300">
+                    Нажмите, чтобы открыть учеников и посещаемость
+                  </p>
                 </div>
                 <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-cyan-100">
                   {groupStudents.length}/{Number(group.max_students ?? 0) || "-"}
@@ -604,8 +611,9 @@ function GroupsPanel({
                 <MiniStat label="Ученики" value={groupStudents.length} />
                 <MiniStat label="Уроки" value={groupLessons.length} />
                 <MiniStat label="Оплаты" value={groupPayments.length} />
-                <MiniStat label="Посещаемость" value={groupAttendance.length} />
+                <MiniStat label="Сегодня" value={`${groupPresentToday}/${groupStudents.length}`} />
               </div>
+              </summary>
 
               <form action={saveRoboticsRecord} className="mt-4 grid gap-2 rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:grid-cols-[1fr_auto] md:items-end">
                 <input type="hidden" name="module" value="groups" />
@@ -637,7 +645,7 @@ function GroupsPanel({
                 <SmallButton>Сохранить ментора</SmallButton>
               </form>
 
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="mt-5 grid gap-4 xl:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
                   <p className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500"><UserPlus className="h-3.5 w-3.5" /> Добавить из табеля</p>
                   <details open className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
@@ -695,6 +703,50 @@ function GroupsPanel({
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                        <Check className="h-3.5 w-3.5" /> Посещаемость сегодня
+                      </p>
+                      <p className="mt-1 text-sm text-slate-400">{today}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-black ${groupStudents.length && groupPresentToday < groupStudents.length ? "bg-yellow-300 text-yellow-950" : "bg-emerald-300 text-emerald-950"}`}>
+                      {groupPresentToday}/{groupStudents.length}
+                    </span>
+                  </div>
+                  {!groupStudents.length && <p className="rounded-xl border border-white/10 bg-slate-950/35 px-3 py-3 text-sm text-slate-400">Сначала добавьте учеников в группу.</p>}
+                  {!!groupStudents.length && (
+                    <div className="max-h-[440px] space-y-3 overflow-auto pr-1">
+                      {groupStudents.map((student) => {
+                        const name = fullName(student);
+                        const todayRecord = groupTodayAttendance.find((item) => item.student_name === name);
+                        const history = groupAttendance.filter((item) => item.student_name === name);
+                        const missed = missedLessonsCount(attendance, name);
+                        return (
+                          <div key={student.id} className={`rounded-2xl border p-3 ${missed >= 8 ? "border-red-300/30 bg-red-500/10" : "border-white/10 bg-white/[0.035]"}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate font-black text-white">{name}</p>
+                                <p className="mt-1 text-xs text-slate-500">{history.length} записей в истории</p>
+                                <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${attendanceStatusClass(String(todayRecord?.status ?? ""))}`}>
+                                  {todayRecord?.status ? `Сегодня: ${todayRecord.status}` : "Сегодня не отмечен"}
+                                </p>
+                              </div>
+                              {missed >= 8 && <span className="rounded-full bg-red-500 px-2.5 py-1 text-[11px] font-black text-white">8+</span>}
+                            </div>
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                              <JournalStatusButton student={student} status="присутствовал" date={today} active={todayRecord?.status === "присутствовал"} />
+                              <JournalStatusButton student={student} status="опоздал" date={today} active={todayRecord?.status === "опоздал"} />
+                              <JournalStatusButton student={student} status="отсутствовал" date={today} active={todayRecord?.status === "отсутствовал"} danger />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
                   <p className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500"><CalendarDays className="h-3.5 w-3.5" /> Автоуроки</p>
                   <form action={createLessonsFromGroupSchedule} className="grid gap-2">
                     <input type="hidden" name="groupId" value={group.id} />
@@ -708,10 +760,11 @@ function GroupsPanel({
                   <p className="mt-3 text-xs leading-5 text-slate-500">Дни пишите через запятую: Monday, Wednesday или Понедельник, Среда.</p>
                 </div>
               </div>
-            </div>
+            </details>
           );
         })}
       </div>
+      {!groups.length && <EmptyState text="Пока групп нет. Создайте группу сверху, затем добавьте учеников и отмечайте посещаемость внутри карточки группы." />}
     </Card>
   );
 }
