@@ -31,10 +31,12 @@ export function CameraPhotoField({
   name = "photoUrl",
   label = "Фото",
   defaultValue = "",
+  urlPlaceholder = "Или вставьте URL фото",
 }: {
   name?: string;
   label?: string;
   defaultValue?: string;
+  urlPlaceholder?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState(defaultValue);
@@ -94,6 +96,13 @@ export function CameraPhotoField({
         <ImagePlus className="h-3.5 w-3.5" />
         Выбрать / заменить фото
       </button>
+      <input
+        type="url"
+        value={preview}
+        onChange={(event) => setPreview(event.target.value)}
+        placeholder={urlPlaceholder}
+        className="premium-input mt-3 h-10 w-full px-3 text-xs text-white outline-none placeholder:text-slate-500"
+      />
     </div>
   );
 }
