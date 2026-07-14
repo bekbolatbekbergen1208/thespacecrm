@@ -107,9 +107,9 @@ export default async function RetailDashboardPage({
             <input type="date" name="date" defaultValue={selectedDate} className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none" />
             {params.q && <input type="hidden" name="q" value={params.q} />}
           </form>
-          <a href={csvHref} download={`retail-report-${selectedDate}.csv`} className="premium-button h-12 justify-center bg-white px-4 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+          <a href={csvHref} download={`retail-profit-report-${selectedDate}.csv`} className="premium-button h-12 justify-center bg-white px-4 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
             <Download className="h-4 w-4" />
-            Скачать отчёт
+            Скачать CSV
           </a>
         </div>
       </Card>
@@ -274,6 +274,8 @@ export default async function RetailDashboardPage({
                     <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
                       <p>Сумма: <b className="text-white">{Number(sale.total_amount ?? 0).toLocaleString()} ₸</b></p>
                       <p>Прибыль: <b className="text-white">{Number(sale.profit_amount ?? 0).toLocaleString()} ₸</b></p>
+                      <p>День покупки: <b className="text-white">{String(product?.created_at ?? "").slice(0, 10) || "-"}</b></p>
+                      <p>День продажи: <b className="text-white">{String(sale.sale_date ?? selectedDate)}</b></p>
                     </div>
                   </div>
                 );
@@ -545,16 +547,37 @@ function csvCell(value: unknown) {
 }
 
 function buildRetailCsvHref(selectedDate: string, sales: RetailRow[], products: RetailRow[]) {
-  const rows = [["date", "product", "quantity", "payment", "revenue", "profit", "customer"]];
+  const rows = [[
+    "sale_date",
+    "purchase_date",
+    "product",
+    "category",
+    "quantity",
+    "purchase_price",
+    "sale_price",
+    "revenue",
+    "profit",
+    "payment",
+    "customer",
+  ]];
   for (const sale of sales) {
     const product = products.find((item) => item.id === sale.product_id);
+    const quantity = Number(sale.quantity ?? 0);
+    const purchasePrice = Number(product?.purchase_price ?? 0);
+    const salePrice = Number(product?.sale_price ?? 0);
+    const revenue = Number(sale.total_amount ?? salePrice * quantity);
+    const profit = Number(sale.profit_amount ?? (salePrice - purchasePrice) * quantity);
     rows.push([
-      selectedDate,
+      String(sale.sale_date ?? selectedDate),
+      String(product?.created_at ?? "").slice(0, 10),
       String(product?.name ?? ""),
+      String(product?.category ?? ""),
       String(sale.quantity ?? 0),
+      String(purchasePrice),
+      String(salePrice),
+      String(revenue),
+      String(profit),
       String(sale.payment_method ?? ""),
-      String(sale.total_amount ?? 0),
-      String(sale.profit_amount ?? 0),
       String(sale.customer_name ?? ""),
     ]);
   }
