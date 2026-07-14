@@ -784,10 +784,11 @@ export async function deleteRetailProduct(formData: FormData) {
   const redirectPath = selectedDate ? `/dashboard/retail?date=${encodeURIComponent(selectedDate)}` : "/dashboard/retail";
   const joiner = redirectPath.includes("?") ? "&" : "?";
 
-  const { error: salesError } = await supabase.from("retail_product_sales").delete().eq("product_id", productId).eq("company_id", companyId);
-  if (salesError) redirect(`${redirectPath}${joiner}error=${encodeURIComponent(salesError.message)}`);
-
-  const { error } = await supabase.from("retail_products").delete().eq("id", productId).eq("company_id", companyId);
+  const { error } = await supabase
+    .from("retail_products")
+    .update({ status: "archived" })
+    .eq("id", productId)
+    .eq("company_id", companyId);
 
   if (error) redirect(`${redirectPath}${joiner}error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");

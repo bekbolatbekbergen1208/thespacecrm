@@ -32,7 +32,8 @@ export default async function RetailDashboardPage({
 
   const saleRows = (sales ?? []) as RetailRow[];
   const allProducts = (products ?? []) as RetailRow[];
-  const productRows = allProducts.filter((product) => {
+  const activeProducts = allProducts.filter((product) => product.status !== "archived");
+  const productRows = activeProducts.filter((product) => {
     const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
     return !query || text.includes(query);
   });
@@ -40,7 +41,7 @@ export default async function RetailDashboardPage({
   const daySales = saleRows.filter((sale) => sale.sale_date === selectedDate);
   const dayReport = sumSales(daySales);
   const totalReport = sumSales(saleRows);
-  const totalRemaining = allProducts.reduce((sum, product) => sum + summarizeProduct(product, saleRows).remaining, 0);
+  const totalRemaining = activeProducts.reduce((sum, product) => sum + summarizeProduct(product, saleRows).remaining, 0);
   const csvHref = `/dashboard/retail/export?date=${encodeURIComponent(selectedDate)}`;
   const last7Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 6) && sale.sale_date <= selectedDate);
   const last30Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 29) && sale.sale_date <= selectedDate);
