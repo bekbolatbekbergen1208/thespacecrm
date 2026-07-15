@@ -3,7 +3,7 @@ import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { ArchiveRestore, BarChart3, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, MapPin, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
 type RetailRow = {
   id: string;
@@ -59,9 +59,9 @@ export default async function RetailDashboardPage({
     .sort((a, b) => a.remaining - b.remaining)
     .slice(0, 6);
   const inventoryCost = summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.purchase_price ?? 0), 0);
-  const inventorySaleValue = summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.sale_price ?? 0), 0);
   const margin = totalReport.revenue ? Math.round((totalReport.profit / totalReport.revenue) * 100) : 0;
   const dailyTrend = lastSevenDays(selectedDate).map((date) => ({ date, ...sumSales(saleRows.filter((sale) => sale.sale_date === date)) }));
+  const addressReports = groupRetailByAddress(activeProducts, saleRows);
   const aiQuestion = params.aiq ?? "";
   const assistantAnswer = aiQuestion
     ? answerRetailQuestion({ question: aiQuestion, selectedDate, products: activeProducts, archivedProducts, sales: saleRows, daySales, summaries, dayReport, totalReport })
@@ -181,11 +181,11 @@ export default async function RetailDashboardPage({
         totalReport={totalReport}
         margin={margin}
         inventoryCost={inventoryCost}
-        inventorySaleValue={inventorySaleValue}
         paymentSplit={paymentSplit}
         topProducts={topProducts}
         lowStockProducts={lowStockProducts}
         dailyTrend={dailyTrend}
+        addressReports={addressReports}
       />
 
       {editable && (
@@ -374,11 +374,11 @@ function RetailReportsSection({
   totalReport,
   margin,
   inventoryCost,
-  inventorySaleValue,
   paymentSplit,
   topProducts,
   lowStockProducts,
   dailyTrend,
+  addressReports,
 }: {
   selectedDate: string;
   dayReport: ReturnType<typeof sumSales>;
@@ -387,11 +387,11 @@ function RetailReportsSection({
   totalReport: ReturnType<typeof sumSales>;
   margin: number;
   inventoryCost: number;
-  inventorySaleValue: number;
   paymentSplit: Array<{ method: string; quantity: number; revenue: number; profit: number }>;
   topProducts: Array<ReturnType<typeof summarizeProduct>>;
   lowStockProducts: Array<ReturnType<typeof summarizeProduct>>;
   dailyTrend: Array<{ date: string; quantity: number; revenue: number; profit: number }>;
+  addressReports: Array<ReturnType<typeof groupRetailByAddress>[number]>;
 }) {
   const maxTrend = Math.max(...dailyTrend.map((item) => item.revenue), 1);
   return (
@@ -441,16 +441,58 @@ function RetailReportsSection({
 
         <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
           <h3 className="font-black text-white">Стоимость склада</h3>
-          <p className="mt-1 text-sm text-slate-500">Сколько товара осталось по закупке и продаже.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <p className="mt-1 text-sm text-slate-500">Сколько товара осталось по закупочной цене.</p>
+          <div className="mt-4 grid gap-3">
             <MiniReport label="Закупочная" value={`${inventoryCost.toLocaleString()} ₸`} />
-            <MiniReport label="Продажная" value={`${inventorySaleValue.toLocaleString()} ₸`} />
           </div>
           <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-100/70">Потенциальная прибыль склада</p>
-            <p className="mt-2 text-2xl font-black text-cyan-50">{Math.max(0, inventorySaleValue - inventoryCost).toLocaleString()} ₸</p>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-100/70">Реальная прибыль считается при продаже</p>
+            <p className="mt-2 text-2xl font-black text-cyan-50">{totalReport.profit.toLocaleString()} ₸</p>
           </div>
         </div>
+      </div>
+
+      <div className="mt-5 rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="flex items-center gap-2 font-black text-white">
+              <MapPin className="h-4 w-4 text-cyan-100" />
+              Отчёт по адресам
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">Выручка, прибыль, продажи и остатки отдельно по каждому адресу.</p>
+          </div>
+          <span className="w-fit rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">{addressReports.length} адресов</span>
+        </div>
+        {addressReports.length ? (
+          <div className="overflow-hidden rounded-2xl border border-white/10">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-white/[0.04] text-xs uppercase tracking-[0.12em] text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Адрес</th>
+                  <th className="px-4 py-3">Товаров</th>
+                  <th className="px-4 py-3">Продано</th>
+                  <th className="px-4 py-3">Остаток</th>
+                  <th className="px-4 py-3">Выручка</th>
+                  <th className="px-4 py-3">Прибыль</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {addressReports.map((item) => (
+                  <tr key={item.address} className="bg-white/[0.025]">
+                    <td className="px-4 py-3 font-black text-white">{item.address}</td>
+                    <td className="px-4 py-3 text-slate-300">{item.products} шт</td>
+                    <td className="px-4 py-3 text-slate-300">{item.quantity} шт</td>
+                    <td className="px-4 py-3 text-slate-300">{item.remaining} шт</td>
+                    <td className="px-4 py-3 font-black text-cyan-100">{item.revenue.toLocaleString()} ₸</td>
+                    <td className={`px-4 py-3 font-black ${item.profit < 0 ? "text-red-100" : "text-emerald-100"}`}>{item.profit.toLocaleString()} ₸</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="rounded-2xl bg-white/[0.04] p-3 text-sm text-slate-500">Адресов пока нет. Добавьте адрес при создании товара.</p>
+        )}
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-3">
@@ -460,7 +502,7 @@ function RetailReportsSection({
               key={item.product.id}
               title={`${index + 1}. ${item.product.name}`}
               note={`${item.sold} шт · прибыль ${item.profit.toLocaleString()} ₸`}
-              value={`${Number(item.product.sale_price ?? 0).toLocaleString()} ₸`}
+              value={`${item.remaining} ост.`}
             />
           ))}
         </ReportList>
@@ -648,6 +690,36 @@ function sumSales(sales: RetailRow[]) {
     }),
     { quantity: 0, revenue: 0, profit: 0 },
   );
+}
+
+function groupRetailByAddress(products: RetailRow[], sales: RetailRow[]) {
+  const map = new Map<
+    string,
+    {
+      address: string;
+      products: number;
+      quantity: number;
+      revenue: number;
+      profit: number;
+      remaining: number;
+    }
+  >();
+
+  for (const product of products) {
+    const address = String(product.address || "Адрес не указан");
+    const productSales = sales.filter((sale) => sale.product_id === product.id);
+    const sold = productSales.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0);
+    const current = map.get(address) ?? { address, products: 0, quantity: 0, revenue: 0, profit: 0, remaining: 0 };
+
+    current.products += 1;
+    current.quantity += sold;
+    current.revenue += productSales.reduce((sum, sale) => sum + Number(sale.total_amount ?? 0), 0);
+    current.profit += productSales.reduce((sum, sale) => sum + Number(sale.profit_amount ?? 0), 0);
+    current.remaining += Number(product.initial_quantity ?? 0) - sold;
+    map.set(address, current);
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue || a.address.localeCompare(b.address));
 }
 
 function dateMinus(dateString: string, days: number) {
