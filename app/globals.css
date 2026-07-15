@@ -235,6 +235,14 @@ textarea {
   min-width: 9rem;
 }
 
+.print-sign-line {
+  display: inline-block;
+  min-width: 9rem;
+  height: 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.75);
+  vertical-align: middle;
+}
+
 .contract-input,
 .contract-text-input,
 .contract-sign-line,

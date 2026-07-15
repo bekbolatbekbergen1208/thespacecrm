@@ -18,7 +18,9 @@ export default async function MentorWorkspacePage({
 }) {
   const [{ supabase, membership, user }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
+  const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
   const today = new Date().toISOString().slice(0, 10);
+  const printSlots = Array.from({ length: 8 }, (_, index) => index + 1);
 
   const [{ data: profile }, { data: employee }, { data: groups }, { data: students }, { data: lessons }, { data: attendance }, { data: grades }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
@@ -80,29 +82,56 @@ export default async function MentorWorkspacePage({
         </Card>
       </div>
 
-      <section className="print-area mb-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+      <section className="print-area mb-5 rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-glow">
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Журнал ментора</p>
-            <h2 className="mt-2 text-2xl font-black text-white">Печатный журнал посещаемости</h2>
-            <p className="mt-2 text-sm text-slate-400">{mentorName} · {today}</p>
+            <h2 className="mt-2 text-3xl font-black text-white">Печатный журнал посещаемости</h2>
+            <p className="mt-2 text-sm text-slate-400">{String(company?.name ?? "CRM.Space")} · {mentorName} · {today}</p>
           </div>
-          <PrintButton />
+          <div className="no-print flex flex-wrap gap-2">
+            <Link href="/dashboard/education/groups" className="premium-button h-11 border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200 hover:bg-white/[0.08]">
+              Группы
+            </Link>
+            <PrintButton label="Печать сейчас" />
+          </div>
+        </div>
+
+        <div className="mentor-print-cover mb-5 grid gap-3 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4 md:grid-cols-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Компания</p>
+            <p className="mt-1 font-black text-white">{String(company?.name ?? "CRM.Space")}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Ментор</p>
+            <p className="mt-1 font-black text-white">{mentorName}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Дата</p>
+            <p className="mt-1 font-black text-white">{today}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Группы</p>
+            <p className="mt-1 font-black text-white">{printableGroups.length}</p>
+          </div>
         </div>
 
         <div className="grid gap-5">
           {!printableGroups.length && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-400">Нет групп для печати.</p>}
           {printableGroups.map(({ group, students: groupRows }) => (
             <div key={group.id} className="mentor-print-group overflow-hidden rounded-3xl border border-white/10 bg-slate-950/35">
-              <div className="border-b border-white/10 px-4 py-3">
+              <div className="border-b border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <h3 className="text-lg font-black text-white">{String(group.name ?? "Группа")}</h3>
+                    <h3 className="text-2xl font-black text-white">{String(group.name ?? "Группа")}</h3>
                     <p className="mt-1 text-sm text-slate-400">
                       {String(group.course ?? "Курс")} · {String(group.room ?? "Кабинет")} · {String(group.start_time ?? "--:--")} - {String(group.end_time ?? "--:--")}
                     </p>
                   </div>
-                  <p className="text-sm font-black text-cyan-100">{groupRows.length} учеников</p>
+                  <div className="text-left sm:text-right">
+                    <p className="text-sm font-black text-cyan-100">{groupRows.length} учеников</p>
+                    <p className="mt-1 text-xs text-slate-500">Отметки: Б, НБ, У, О</p>
+                  </div>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -113,9 +142,9 @@ export default async function MentorWorkspacePage({
                       <th className="px-4 py-3">Имя ученика</th>
                       <th className="px-4 py-3">Родитель</th>
                       <th className="px-4 py-3">Телефон</th>
-                      <th className="px-4 py-3">Был</th>
-                      <th className="px-4 py-3">Нет</th>
-                      <th className="px-4 py-3">Опоздал</th>
+                      {printSlots.map((slot) => (
+                        <th key={slot} className="px-3 py-3 text-center">#{slot}</th>
+                      ))}
                       <th className="px-4 py-3">Оценка</th>
                       <th className="px-4 py-3">Комментарий</th>
                     </tr>
@@ -123,7 +152,7 @@ export default async function MentorWorkspacePage({
                   <tbody className="divide-y divide-white/10">
                     {!groupRows.length && (
                       <tr>
-                        <td colSpan={9} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
+                        <td colSpan={14} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
                       </tr>
                     )}
                     {groupRows.map((student, index) => (
@@ -132,15 +161,20 @@ export default async function MentorWorkspacePage({
                         <td className="px-4 py-3 font-black text-white">{fullName(student)}</td>
                         <td className="px-4 py-3 text-slate-300">{String(student.parent_name ?? "")}</td>
                         <td className="px-4 py-3 text-slate-300">{String(student.parent_phone ?? student.whatsapp ?? "")}</td>
-                        <td className="px-4 py-3"><span className="print-check-box" /></td>
-                        <td className="px-4 py-3"><span className="print-check-box" /></td>
-                        <td className="px-4 py-3"><span className="print-check-box" /></td>
+                        {printSlots.map((slot) => (
+                          <td key={slot} className="px-3 py-3 text-center"><span className="print-check-box" /></td>
+                        ))}
                         <td className="px-4 py-3"><span className="print-line" /></td>
                         <td className="px-4 py-3"><span className="print-wide-line" /></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="mentor-print-signature grid gap-4 border-t border-white/10 px-4 py-4 text-sm text-slate-400 md:grid-cols-3">
+                <p>Тема урока: <span className="print-sign-line" /></p>
+                <p>Подпись ментора: <span className="print-sign-line" /></p>
+                <p>Подпись администратора: <span className="print-sign-line" /></p>
               </div>
             </div>
           ))}
@@ -247,6 +281,7 @@ export default async function MentorWorkspacePage({
                             <option value="присутствовал">Был</option>
                             <option value="опоздал">Опоздал</option>
                             <option value="отсутствовал">Не был</option>
+                            <option value="уважительный">Уважительный</option>
                           </select>
                           <input
                             name={`score:${name}`}
