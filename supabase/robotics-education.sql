@@ -262,11 +262,25 @@ create table if not exists public.retail_product_sales (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.retail_debts (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  customer_name text not null,
+  phone text not null,
+  amount numeric(12,2) not null default 0,
+  due_date date not null default current_date,
+  status text not null default 'open',
+  notes text,
+  last_reminded_at timestamptz,
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 do $$
 declare
   tbl text;
 begin
-  foreach tbl in array array['retail_products','retail_product_sales']
+  foreach tbl in array array['retail_products','retail_product_sales','retail_debts']
   loop
     execute format('alter table public.%I enable row level security', tbl);
     execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);

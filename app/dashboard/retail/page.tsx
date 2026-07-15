@@ -1,9 +1,19 @@
-import { deleteRetailProduct, markRetailProductSold, permanentlyDeleteRetailProduct, restoreRetailProduct, returnRetailProduct, saveRetailProduct } from "@/app/actions";
+import {
+  deleteRetailProduct,
+  markRetailDebtPaid,
+  markRetailDebtReminderSent,
+  markRetailProductSold,
+  permanentlyDeleteRetailProduct,
+  restoreRetailProduct,
+  returnRetailProduct,
+  saveRetailDebt,
+  saveRetailProduct,
+} from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { ArchiveRestore, BarChart3, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, MapPin, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bell, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, MapPin, MessageCircle, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
 type RetailRow = {
   id: string;
@@ -24,13 +34,18 @@ export default async function RetailDashboardPage({
   const selectedDate = params.date || today;
   const query = (params.q ?? "").toLowerCase();
 
-  const [{ data: products, error: productsError }, { data: sales, error: salesError }] = await Promise.all([
+  const [{ data: products, error: productsError }, { data: sales, error: salesError }, { data: debts, error: debtsError }] = await Promise.all([
     supabase.from("retail_products").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
     supabase.from("retail_product_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000),
+    supabase.from("retail_debts").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
   ]);
-  const schemaError = [productsError, salesError].find((error) => error?.message?.toLowerCase().includes("schema cache") || error?.message?.toLowerCase().includes("retail_products"));
+  const schemaError = [productsError, salesError, debtsError].find((error) => error?.message?.toLowerCase().includes("schema cache") || error?.message?.toLowerCase().includes("retail_products") || error?.message?.toLowerCase().includes("retail_debts"));
 
   const saleRows = (sales ?? []) as RetailRow[];
+  const debtRows = (debts ?? []) as RetailRow[];
+  const openDebts = debtRows.filter((debt) => debt.status !== "paid");
+  const dueDebts = openDebts.filter(isDebtReminderDue);
+  const debtTotal = openDebts.reduce((sum, debt) => sum + Number(debt.amount ?? 0), 0);
   const allProducts = (products ?? []) as RetailRow[];
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
   const archivedProducts = allProducts.filter((product) => product.status === "archived");
@@ -81,7 +96,7 @@ export default async function RetailDashboardPage({
           <p className="font-black">Retail Store таблицы ещё не созданы в Supabase.</p>
           <p className="mt-1 text-yellow-100/90">
             Откройте Supabase SQL Editor и выполните файл <b>supabase/retail-store.sql</b>. После выполнения таблицы
-            <b> retail_products</b> и <b>retail_product_sales</b> появятся в schema cache.
+            <b> retail_products</b>, <b>retail_product_sales</b> и <b>retail_debts</b> появятся в schema cache.
           </p>
           <p className="mt-2 rounded-2xl bg-slate-950/40 px-3 py-2 font-mono text-xs text-yellow-100">{schemaError.message}</p>
         </div>
@@ -92,13 +107,17 @@ export default async function RetailDashboardPage({
       {params.saved === "deleted" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар удалён.</p>}
       {params.saved === "restored" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар восстановлен.</p>}
       {params.saved === "purged" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар окончательно удалён.</p>}
+      {params.saved === "debt" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Долг сохранён.</p>}
+      {params.saved === "debt-paid" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Долг закрыт.</p>}
+      {params.saved === "debt-reminder" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Напоминание отмечено отправленным.</p>}
 
-      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         <Metric title="Товары" value={activeProducts.length} note={`остаток ${totalRemaining} шт`} icon={<Package className="h-4 w-4" />} />
         <Metric title="Продано сегодня" value={dayReport.quantity} note={selectedDate} icon={<ShoppingCart className="h-4 w-4" />} />
         <Metric title="Выручка" value={`${dayReport.revenue.toLocaleString()} ₸`} note="за выбранный день" icon={<CircleDollarSign className="h-4 w-4" />} />
         <Metric title="Прибыль" value={`${dayReport.profit.toLocaleString()} ₸`} note={`Всего ${totalReport.profit.toLocaleString()} ₸`} icon={<BarChart3 className="h-4 w-4" />} danger={dayReport.profit < 0} />
         <Metric title="Возвраты" value={Math.abs(dayReturns.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0))} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} danger={dayReturns.length > 0} />
+        <Metric title="Долги" value={`${debtTotal.toLocaleString()} ₸`} note={`${dueDebts.length} напомнить`} icon={<Bell className="h-4 w-4" />} danger={dueDebts.length > 0} />
         <Metric title="Мусор" value={archivedProducts.length} note="архивные товары" icon={<Trash2 className="h-4 w-4" />} danger={archivedProducts.length > 0} />
       </div>
 
@@ -187,6 +206,8 @@ export default async function RetailDashboardPage({
         dailyTrend={dailyTrend}
         addressReports={addressReports}
       />
+
+      <RetailDebtsSection debts={openDebts} editable={editable} />
 
       {editable && (
         <Card className="mb-5">
@@ -527,6 +548,100 @@ function RetailReportsSection({
   );
 }
 
+function RetailDebtsSection({ debts, editable }: { debts: RetailRow[]; editable: boolean }) {
+  const total = debts.reduce((sum, debt) => sum + Number(debt.amount ?? 0), 0);
+  const dueCount = debts.filter(isDebtReminderDue).length;
+
+  return (
+    <Card id="debts" className="mb-5 scroll-mt-6">
+      <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-red-300/20 bg-red-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-red-100">
+            <Bell className="h-3.5 w-3.5" />
+            Долги
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-white">Долги клиентов</h2>
+          <p className="mt-2 text-sm text-slate-400">Номера WhatsApp, суммы и напоминание каждые 12 часов.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MiniReport label="Открытый долг" value={`${total.toLocaleString()} ₸`} />
+          <MiniReport label="Пора написать" value={`${dueCount} клиент`} />
+        </div>
+      </div>
+
+      {editable && (
+        <form action={saveRetailDebt} className="mb-5 grid gap-4 rounded-3xl border border-white/10 bg-slate-950/35 p-4 xl:grid-cols-5">
+          <Field label="Клиент" name="customerName" />
+          <Field label="WhatsApp номер" name="phone" />
+          <Field label="Сумма долга" name="amount" type="number" defaultValue={0} />
+          <Field label="Дата оплаты" name="dueDate" type="date" required={false} />
+          <Select label="Статус" name="status" defaultValue="open">
+            <option value="open">Открыт</option>
+            <option value="paid">Оплачен</option>
+          </Select>
+          <div className="xl:col-span-5">
+            <Textarea label="Комментарий" name="notes" />
+          </div>
+          <button className="premium-button h-12 w-full bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50 xl:col-span-5">
+            <CheckCircle2 className="h-4 w-4" />
+            Добавить долг
+          </button>
+        </form>
+      )}
+
+      {debts.length ? (
+        <div className="grid gap-3 xl:grid-cols-2">
+          {debts.map((debt) => {
+            const due = isDebtReminderDue(debt);
+            const whatsappHref = buildDebtWhatsappHref(debt);
+            return (
+              <div key={debt.id} className={`rounded-3xl border p-4 ${due ? "border-red-300/30 bg-red-500/10" : "border-white/10 bg-slate-950/35"}`}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-lg font-black text-white">{debt.customer_name}</p>
+                    <p className="mt-1 text-sm text-slate-400">{debt.phone}</p>
+                    {debt.notes && <p className="mt-2 text-sm text-slate-500">{debt.notes}</p>}
+                  </div>
+                  <span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${due ? "bg-red-500 text-white" : "bg-cyan-300/10 text-cyan-100"}`}>
+                    {due ? "12 сағ өтті" : "күту"}
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <MiniReport label="Сумма" value={`${Number(debt.amount ?? 0).toLocaleString()} ₸`} />
+                  <MiniReport label="Дата оплаты" value={String(debt.due_date ?? "-")} />
+                  <MiniReport label="Соңғы хабар" value={debt.last_reminded_at ? formatDateTime(String(debt.last_reminded_at)) : "жоқ"} />
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <a href={whatsappHref} target="_blank" rel="noreferrer" className="premium-button h-10 justify-center border border-emerald-300/20 bg-emerald-300/10 px-3 text-xs font-black text-emerald-100 hover:bg-emerald-300/15">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    WhatsApp
+                  </a>
+                  <form action={markRetailDebtReminderSent}>
+                    <input type="hidden" name="debtId" value={debt.id} />
+                    <button className="premium-button h-10 w-full justify-center border border-cyan-300/20 bg-cyan-300/10 px-3 text-xs font-black text-cyan-100 hover:bg-cyan-300/15">
+                      <Bell className="h-3.5 w-3.5" />
+                      Отправлено
+                    </button>
+                  </form>
+                  <form action={markRetailDebtPaid}>
+                    <input type="hidden" name="debtId" value={debt.id} />
+                    <button className="premium-button h-10 w-full justify-center bg-white px-3 text-xs font-black text-slate-950 hover:bg-cyan-50">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Оплачено
+                    </button>
+                  </form>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState text="Открытых долгов нет. Добавьте долг, если клиент должен оплатить позже." />
+      )}
+    </Card>
+  );
+}
+
 function RetailTrashSection({ products }: { products: RetailRow[] }) {
   return (
     <Card id="trash" className="mt-5">
@@ -690,6 +805,36 @@ function sumSales(sales: RetailRow[]) {
     }),
     { quantity: 0, revenue: 0, profit: 0 },
   );
+}
+
+function isDebtReminderDue(debt: RetailRow) {
+  if (debt.status === "paid") return false;
+  const lastReminder = debt.last_reminded_at ? new Date(String(debt.last_reminded_at)).getTime() : 0;
+  if (!lastReminder || Number.isNaN(lastReminder)) return true;
+  return Date.now() - lastReminder >= 12 * 60 * 60 * 1000;
+}
+
+function normalizeWhatsappPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("8") && digits.length === 11) return `7${digits.slice(1)}`;
+  return digits;
+}
+
+function buildDebtWhatsappHref(debt: RetailRow) {
+  const phone = normalizeWhatsappPhone(String(debt.phone ?? ""));
+  const message = [
+    `Сәлеметсіз бе, ${String(debt.customer_name ?? "клиент")}!`,
+    `Сізде ${Number(debt.amount ?? 0).toLocaleString()} ₸ қарыз бар.`,
+    `Төлем күні: ${String(debt.due_date ?? "-")}.`,
+    "Мүмкін болса, бүгін төлем жасап жіберіңіз. Рақмет!",
+  ].join("\n");
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function groupRetailByAddress(products: RetailRow[], sales: RetailRow[]) {

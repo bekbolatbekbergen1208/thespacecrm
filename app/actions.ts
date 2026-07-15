@@ -906,6 +906,63 @@ export async function returnRetailProduct(formData: FormData) {
   redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&saved=return`);
 }
 
+export async function saveRetailDebt(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может добавлять долги")}`);
+
+  const dueDate = value(formData, "dueDate") || new Date().toISOString().slice(0, 10);
+  const amount = Math.max(0, numberValue(formData, "amount"));
+  if (amount <= 0) {
+    redirect(`/dashboard/retail?error=${encodeURIComponent("Введите сумму долга")}`);
+  }
+
+  const { error } = await supabase.from("retail_debts").insert({
+    company_id: companyId,
+    customer_name: z.string().min(2).parse(value(formData, "customerName")),
+    phone: z.string().min(5).parse(value(formData, "phone")),
+    amount,
+    due_date: dueDate,
+    status: value(formData, "status") || "open",
+    notes: value(formData, "notes") || null,
+  });
+
+  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/retail");
+  redirect("/dashboard/retail?saved=debt");
+}
+
+export async function markRetailDebtPaid(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может закрывать долги")}`);
+
+  const debtId = z.string().uuid().parse(value(formData, "debtId"));
+  const { error } = await supabase
+    .from("retail_debts")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", debtId)
+    .eq("company_id", companyId);
+
+  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/retail");
+  redirect("/dashboard/retail?saved=debt-paid");
+}
+
+export async function markRetailDebtReminderSent(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может отмечать напоминания")}`);
+
+  const debtId = z.string().uuid().parse(value(formData, "debtId"));
+  const { error } = await supabase
+    .from("retail_debts")
+    .update({ last_reminded_at: new Date().toISOString() })
+    .eq("id", debtId)
+    .eq("company_id", companyId);
+
+  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/retail");
+  redirect("/dashboard/retail?saved=debt-reminder");
+}
+
 export async function saveBakerySale(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const shopId = z.string().uuid().parse(value(formData, "shopId"));

@@ -30,8 +30,23 @@ create table if not exists public.retail_product_sales (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.retail_debts (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  customer_name text not null,
+  phone text not null,
+  amount numeric(12,2) not null default 0,
+  due_date date not null default current_date,
+  status text not null default 'open',
+  notes text,
+  last_reminded_at timestamptz,
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 alter table public.retail_products enable row level security;
 alter table public.retail_product_sales enable row level security;
+alter table public.retail_debts enable row level security;
 
 drop policy if exists "Members can read retail_products" on public.retail_products;
 drop policy if exists "Managers can insert retail_products" on public.retail_products;
@@ -81,6 +96,31 @@ using (public.has_company_role(company_id, array['founder','admin','manager']::p
 
 create policy "Managers can delete retail_product_sales"
 on public.retail_product_sales
+for delete
+using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
+
+drop policy if exists "Members can read retail_debts" on public.retail_debts;
+drop policy if exists "Managers can insert retail_debts" on public.retail_debts;
+drop policy if exists "Managers can update retail_debts" on public.retail_debts;
+drop policy if exists "Managers can delete retail_debts" on public.retail_debts;
+
+create policy "Members can read retail_debts"
+on public.retail_debts
+for select
+using (public.is_company_member(company_id));
+
+create policy "Managers can insert retail_debts"
+on public.retail_debts
+for insert
+with check (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
+
+create policy "Managers can update retail_debts"
+on public.retail_debts
+for update
+using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
+
+create policy "Managers can delete retail_debts"
+on public.retail_debts
 for delete
 using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 
