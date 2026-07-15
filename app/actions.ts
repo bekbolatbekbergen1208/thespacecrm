@@ -918,6 +918,7 @@ export async function saveRetailDebt(formData: FormData) {
 
   const { error } = await supabase.from("retail_debts").insert({
     company_id: companyId,
+    product_id: value(formData, "productId") || null,
     customer_name: z.string().min(2).parse(value(formData, "customerName")),
     phone: z.string().min(5).parse(value(formData, "phone")),
     amount,

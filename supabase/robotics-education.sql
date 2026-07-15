@@ -265,6 +265,7 @@ create table if not exists public.retail_product_sales (
 create table if not exists public.retail_debts (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
+  product_id uuid references public.retail_products(id) on delete set null,
   customer_name text not null,
   phone text not null,
   amount numeric(12,2) not null default 0,
@@ -275,6 +276,8 @@ create table if not exists public.retail_debts (
   paid_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.retail_debts add column if not exists product_id uuid references public.retail_products(id) on delete set null;
 
 do $$
 declare

@@ -238,7 +238,7 @@ export default async function RetailDashboardPage({
         icon={<Bell className="h-4 w-4" />}
         id="debts"
       >
-        <RetailDebtsSection debts={openDebts} editable={editable} />
+        <RetailDebtsSection debts={openDebts} products={allProducts} editable={editable} />
       </CollapsibleSection>
 
       {editable && (
@@ -327,46 +327,72 @@ export default async function RetailDashboardPage({
                           </span>
                           <p className="mt-2 text-xs text-slate-500">прибыль {profit.toLocaleString()} ₸</p>
                         </td>
-                        <td className="px-4 py-4">
-                          <form action={deleteRetailProduct} className="mb-3">
-                            <input type="hidden" name="productId" value={product.id} />
-                            <input type="hidden" name="selectedDate" value={selectedDate} />
-                            <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Удалить товар
-                            </button>
-                          </form>
-                          <form action={markRetailProductSold} className="grid min-w-56 gap-2">
-                            <input type="hidden" name="productId" value={product.id} />
-                            <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                            <div className="grid grid-cols-2 gap-2">
-                              <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                              <input name="salePrice" type="number" min="0" placeholder="Цена" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                        <td className="px-4 py-4 align-top">
+                          <details className="group min-w-64 rounded-2xl border border-white/10 bg-slate-950/35 p-2">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/10">
+                              <span>Открыть функции</span>
+                              <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+                            </summary>
+                            <div className="mt-3 grid gap-3">
+                              <form action={markRetailProductSold} className="grid gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/5 p-2">
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-100">Продажа</p>
+                                <input type="hidden" name="productId" value={product.id} />
+                                <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                  <input name="salePrice" type="number" min="0" placeholder="Цена" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                </div>
+                                <select name="paymentMethod" defaultValue="cash" className="premium-input h-9 px-3 text-xs text-white outline-none">
+                                  <option value="cash">Нал</option>
+                                  <option value="kaspi">Kaspi</option>
+                                  <option value="card">Карта</option>
+                                  <option value="transfer">Перевод</option>
+                                </select>
+                                <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                <SmallButton>Продано</SmallButton>
+                              </form>
+
+                              <form action={saveRetailDebt} className="grid gap-2 rounded-2xl border border-red-300/20 bg-red-500/5 p-2">
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-red-100">В долг</p>
+                                <input type="hidden" name="productId" value={product.id} />
+                                <input name="customerName" placeholder="Клиент" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                <input name="phone" placeholder="WhatsApp номер" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input name="amount" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  <input name="dueDate" type="date" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                </div>
+                                <input name="notes" placeholder="Комментарий" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                <button className="premium-button h-9 w-full justify-center border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100 hover:bg-red-500/15">
+                                  <Bell className="h-3.5 w-3.5" />
+                                  Записать долг
+                                </button>
+                              </form>
+
+                              <form action={returnRetailProduct} className="grid gap-2 rounded-2xl border border-yellow-300/20 bg-yellow-300/5 p-2">
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-yellow-100">Возврат</p>
+                                <input type="hidden" name="productId" value={product.id} />
+                                <input type="date" name="returnDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                  <input name="returnPrice" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                </div>
+                                <input name="customerName" placeholder="Кто вернул" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                <button className="premium-button h-9 w-full justify-center border border-yellow-300/20 bg-yellow-300/10 px-3 text-xs font-black text-yellow-100 hover:bg-yellow-300/15">
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  Возврат
+                                </button>
+                              </form>
+
+                              <form action={deleteRetailProduct}>
+                                <input type="hidden" name="productId" value={product.id} />
+                                <input type="hidden" name="selectedDate" value={selectedDate} />
+                                <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Удалить товар
+                                </button>
+                              </form>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <select name="paymentMethod" defaultValue="cash" className="premium-input h-9 px-3 text-xs text-white outline-none">
-                                <option value="cash">Нал</option>
-                                <option value="kaspi">Kaspi</option>
-                                <option value="card">Карта</option>
-                                <option value="transfer">Перевод</option>
-                              </select>
-                            </div>
-                            <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                            <SmallButton>Продано</SmallButton>
-                          </form>
-                          <form action={returnRetailProduct} className="mt-3 grid min-w-56 gap-2 rounded-2xl border border-yellow-300/20 bg-yellow-300/5 p-2">
-                            <input type="hidden" name="productId" value={product.id} />
-                            <input type="date" name="returnDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                            <div className="grid grid-cols-2 gap-2">
-                              <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                              <input name="returnPrice" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                            </div>
-                            <input name="customerName" placeholder="Кто вернул" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                            <button className="premium-button h-9 w-full justify-center border border-yellow-300/20 bg-yellow-300/10 px-3 text-xs font-black text-yellow-100 hover:bg-yellow-300/15">
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              Возврат
-                            </button>
-                          </form>
+                          </details>
                         </td>
                       </tr>
                     ))}
@@ -635,7 +661,7 @@ function CollapsibleSection({
   );
 }
 
-function RetailDebtsSection({ debts, editable }: { debts: RetailRow[]; editable: boolean }) {
+function RetailDebtsSection({ debts, products, editable }: { debts: RetailRow[]; products: RetailRow[]; editable: boolean }) {
   const total = debts.reduce((sum, debt) => sum + Number(debt.amount ?? 0), 0);
   const dueCount = debts.filter(isDebtReminderDue).length;
 
@@ -681,12 +707,14 @@ function RetailDebtsSection({ debts, editable }: { debts: RetailRow[]; editable:
           {debts.map((debt) => {
             const due = isDebtReminderDue(debt);
             const whatsappHref = buildDebtWhatsappHref(debt);
+            const product = products.find((item) => item.id === debt.product_id);
             return (
               <div key={debt.id} className={`rounded-3xl border p-4 ${due ? "border-red-300/30 bg-red-500/10" : "border-white/10 bg-slate-950/35"}`}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-lg font-black text-white">{debt.customer_name}</p>
                     <p className="mt-1 text-sm text-slate-400">{debt.phone}</p>
+                    {product && <p className="mt-2 text-sm font-semibold text-cyan-100">Товар: {product.name}</p>}
                     {debt.notes && <p className="mt-2 text-sm text-slate-500">{debt.notes}</p>}
                   </div>
                   <span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${due ? "bg-red-500 text-white" : "bg-cyan-300/10 text-cyan-100"}`}>
