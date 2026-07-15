@@ -1,11 +1,11 @@
 import { approveEmployeeAccess, deleteEmployee, saveEmployee } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field, SmallButton } from "@/components/app/forms";
-import { canAdmin, canManage, requireUser } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 
-export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const [{ supabase, membership }, params, locale] = await Promise.all([requireUser(), searchParams, getServerLocale()]);
   const tt = (value: string) => translateLiteral(locale, value);
   if (!canManage(membership!.role)) {
@@ -17,11 +17,11 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     );
   }
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
-  const [{ data: employees }, { data: accessRequests }] = await Promise.all([
+  const [{ data: employees, error: employeesError }, { data: accessRequests, error: requestsError }] = await Promise.all([
     supabase.from("employees").select("*").eq("company_id", membership!.company_id).order("created_at", { ascending: false }),
     canManage(membership!.role)
       ? supabase.from("employee_access_requests").select("*").eq("status", "pending").order("created_at", { ascending: true }).limit(20)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
   ]);
   const pendingRequests = accessRequests?.filter((request) => request.company_id === membership!.company_id || (!request.company_id && request.company_name.toLowerCase() === company?.name.toLowerCase())) ?? [];
 
@@ -29,6 +29,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader title={tt("Employee management")} description={tt("Maintain employee records, roles, contacts, and payroll information.")} />
       {params.error && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{params.error}</p>}
+      {employeesError && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{employeesError.message}</p>}
+      {requestsError && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{requestsError.message}</p>}
+      {params.saved === "employee" && <p className="mb-4 rounded-[8px] border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">Сотрудник сохранён.</p>}
+      {params.saved === "deleted" && <p className="mb-4 rounded-[8px] border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">Сотрудник удалён.</p>}
       {canManage(membership!.role) && (
         <Card className="mb-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -56,7 +60,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
           </div>
         </Card>
       )}
-      {canAdmin(membership!.role) && (
+      {canManage(membership!.role) && (
         <Card>
           <form action={saveEmployee} className="grid gap-4 md:grid-cols-5">
             <Field label={tt("Name")} name="name" />
@@ -69,10 +73,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         </Card>
       )}
       <div className="mt-5 space-y-3">
-        {!employees?.length && <EmptyState text={canAdmin(membership!.role) ? tt("No employees yet. Add employee records above.") : tt("No employees yet.")} />}
+        {!employees?.length && <EmptyState text={canManage(membership!.role) ? tt("No employees yet. Add employee records above.") : tt("No employees yet.")} />}
         {employees?.map((employee) => (
           <Card key={employee.id}>
-            {canAdmin(membership!.role) ? (
+            {canManage(membership!.role) ? (
               <>
                 <form action={saveEmployee} className="grid gap-4 md:grid-cols-6">
                   <input type="hidden" name="id" value={employee.id} />

@@ -998,7 +998,9 @@ export async function deleteCustomer(formData: FormData) {
 }
 
 export async function saveEmployee(formData: FormData) {
-  const { supabase, companyId } = await companyContext();
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/employees?error=${encodeURIComponent("Only founders, admins, and managers can save employees")}`);
+
   const id = value(formData, "id");
   if (!id) {
     const { count } = await supabase
@@ -1022,13 +1024,17 @@ export async function saveEmployee(formData: FormData) {
 
   if (result.error) redirect(`/dashboard/employees?error=${encodeURIComponent(result.error.message)}`);
   revalidatePath("/dashboard/employees");
+  redirect("/dashboard/employees?saved=employee");
 }
 
 export async function deleteEmployee(formData: FormData) {
-  const { supabase } = await companyContext();
-  const { error } = await supabase.from("employees").delete().eq("id", value(formData, "id"));
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/employees?error=${encodeURIComponent("Only founders, admins, and managers can delete employees")}`);
+
+  const { error } = await supabase.from("employees").delete().eq("id", value(formData, "id")).eq("company_id", companyId);
   if (error) redirect(`/dashboard/employees?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/employees");
+  redirect("/dashboard/employees?saved=deleted");
 }
 
 export async function saveTask(formData: FormData) {

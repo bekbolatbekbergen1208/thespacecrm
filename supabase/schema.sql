@@ -220,8 +220,8 @@ create policy "Members can read employees" on public.employees for select using 
 create policy "Admins can create employees" on public.employees for insert with check (public.has_company_role(company_id, array['founder','admin']::public.member_role[]));
 create policy "Managers can create approved employees" on public.employees for insert with check (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 create policy "Members can create own employee record" on public.employees for insert with check (public.is_company_member(company_id) and user_id = auth.uid());
-create policy "Admins can update employees" on public.employees for update using (public.has_company_role(company_id, array['founder','admin']::public.member_role[]));
-create policy "Admins can delete employees" on public.employees for delete using (public.has_company_role(company_id, array['founder','admin']::public.member_role[]));
+create policy "Managers can update employees" on public.employees for update using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
+create policy "Managers can delete employees" on public.employees for delete using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 
 create policy "Members can read tasks" on public.tasks for select using (public.is_company_member(company_id));
 create policy "Managers can create tasks" on public.tasks for insert with check (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
