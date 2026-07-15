@@ -13,7 +13,7 @@ import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { ArchiveRestore, BarChart3, Bell, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, MapPin, MessageCircle, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleDollarSign, Download, Image as ImageIcon, MapPin, MessageCircle, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
 type RetailRow = {
   id: string;
@@ -111,15 +111,22 @@ export default async function RetailDashboardPage({
       {params.saved === "debt-paid" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Долг закрыт.</p>}
       {params.saved === "debt-reminder" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Напоминание отмечено отправленным.</p>}
 
-      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-7">
-        <Metric title="Товары" value={activeProducts.length} note={`остаток ${totalRemaining} шт`} icon={<Package className="h-4 w-4" />} />
-        <Metric title="Продано сегодня" value={dayReport.quantity} note={selectedDate} icon={<ShoppingCart className="h-4 w-4" />} />
-        <Metric title="Выручка" value={`${dayReport.revenue.toLocaleString()} ₸`} note="за выбранный день" icon={<CircleDollarSign className="h-4 w-4" />} />
-        <Metric title="Прибыль" value={`${dayReport.profit.toLocaleString()} ₸`} note={`Всего ${totalReport.profit.toLocaleString()} ₸`} icon={<BarChart3 className="h-4 w-4" />} danger={dayReport.profit < 0} />
-        <Metric title="Возвраты" value={Math.abs(dayReturns.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0))} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} danger={dayReturns.length > 0} />
-        <Metric title="Долги" value={`${debtTotal.toLocaleString()} ₸`} note={`${dueDebts.length} напомнить`} icon={<Bell className="h-4 w-4" />} danger={dueDebts.length > 0} />
-        <Metric title="Мусор" value={archivedProducts.length} note="архивные товары" icon={<Trash2 className="h-4 w-4" />} danger={archivedProducts.length > 0} />
-      </div>
+      <CollapsibleSection
+        title="Сводка"
+        description="Товары, продажи, выручка, прибыль, долги и возвраты скрыты до открытия."
+        badge={`${activeProducts.length} товаров`}
+        icon={<BarChart3 className="h-4 w-4" />}
+      >
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
+          <Metric title="Товары" value={activeProducts.length} note={`остаток ${totalRemaining} шт`} icon={<Package className="h-4 w-4" />} />
+          <Metric title="Продано сегодня" value={dayReport.quantity} note={selectedDate} icon={<ShoppingCart className="h-4 w-4" />} />
+          <Metric title="Выручка" value={`${dayReport.revenue.toLocaleString()} ₸`} note="за выбранный день" icon={<CircleDollarSign className="h-4 w-4" />} />
+          <Metric title="Прибыль" value={`${dayReport.profit.toLocaleString()} ₸`} note={`Всего ${totalReport.profit.toLocaleString()} ₸`} icon={<BarChart3 className="h-4 w-4" />} danger={dayReport.profit < 0} />
+          <Metric title="Возвраты" value={Math.abs(dayReturns.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0))} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} danger={dayReturns.length > 0} />
+          <Metric title="Долги" value={`${debtTotal.toLocaleString()} ₸`} note={`${dueDebts.length} напомнить`} icon={<Bell className="h-4 w-4" />} danger={dueDebts.length > 0} />
+          <Metric title="Мусор" value={archivedProducts.length} note="архивные товары" icon={<Trash2 className="h-4 w-4" />} danger={archivedProducts.length > 0} />
+        </div>
+      </CollapsibleSection>
 
       <Card className="mb-5">
         <div className="grid gap-3 lg:grid-cols-[1fr_240px_180px_180px]">
@@ -149,65 +156,90 @@ export default async function RetailDashboardPage({
         </div>
       </Card>
 
-      <Card id="assistant" className="mb-5">
-        <div className="grid gap-5 xl:grid-cols-[1fr_1.1fr]">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
-              <Bot className="h-3.5 w-3.5" />
-              AI ассистент
-            </p>
-            <h2 className="mt-3 text-2xl font-black text-white">Помощник Retail Store</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Отвечает по товарам, остаткам, возвратам, прибыли и мусору. Сейчас работает без внешнего API, поэтому ответы появляются сразу по данным CRM.
-            </p>
-            <div className="mt-4 grid gap-3">
-              {assistantInsights.map((item) => (
-                <AssistantInsight key={item.title} title={item.title} detail={item.detail} tone={item.tone} />
-              ))}
-            </div>
-          </div>
-          <form action="/dashboard/retail#assistant" className="rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
-            <input type="hidden" name="date" value={selectedDate} />
-            {params.q && <input type="hidden" name="q" value={params.q} />}
-            <label>
-              <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Спросить у ассистента</span>
-              <textarea
-                name="aiq"
-                defaultValue={aiQuestion}
-                placeholder="Например: какие товары заканчиваются, какая прибыль, сколько возвратов, что в мусоре?"
-                className="premium-input min-h-28 w-full px-4 py-3 text-sm text-white outline-none"
-              />
-            </label>
-            <button className="premium-button mt-3 h-11 bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
-              <Bot className="h-4 w-4" />
-              Спросить
-            </button>
-            {assistantAnswer && (
-              <div className="mt-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Ответ</p>
-                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-100">{assistantAnswer}</p>
+      <CollapsibleSection
+        title="AI ассистент"
+        description="Вопросы по товарам, остаткам, возвратам, прибыли и мусору."
+        badge="Открыть"
+        icon={<Bot className="h-4 w-4" />}
+        id="assistant"
+        defaultOpen={Boolean(aiQuestion)}
+      >
+        <Card>
+          <div className="grid gap-5 xl:grid-cols-[1fr_1.1fr]">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
+                <Bot className="h-3.5 w-3.5" />
+                AI ассистент
+              </p>
+              <h2 className="mt-3 text-2xl font-black text-white">Помощник Retail Store</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Отвечает по товарам, остаткам, возвратам, прибыли и мусору. Сейчас работает без внешнего API, поэтому ответы появляются сразу по данным CRM.
+              </p>
+              <div className="mt-4 grid gap-3">
+                {assistantInsights.map((item) => (
+                  <AssistantInsight key={item.title} title={item.title} detail={item.detail} tone={item.tone} />
+                ))}
               </div>
-            )}
-          </form>
-        </div>
-      </Card>
+            </div>
+            <form action="/dashboard/retail#assistant" className="rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
+              <input type="hidden" name="date" value={selectedDate} />
+              {params.q && <input type="hidden" name="q" value={params.q} />}
+              <label>
+                <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Спросить у ассистента</span>
+                <textarea
+                  name="aiq"
+                  defaultValue={aiQuestion}
+                  placeholder="Например: какие товары заканчиваются, какая прибыль, сколько возвратов, что в мусоре?"
+                  className="premium-input min-h-28 w-full px-4 py-3 text-sm text-white outline-none"
+                />
+              </label>
+              <button className="premium-button mt-3 h-11 bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+                <Bot className="h-4 w-4" />
+                Спросить
+              </button>
+              {assistantAnswer && (
+                <div className="mt-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Ответ</p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-100">{assistantAnswer}</p>
+                </div>
+              )}
+            </form>
+          </div>
+        </Card>
+      </CollapsibleSection>
 
-      <RetailReportsSection
-        selectedDate={selectedDate}
-        dayReport={dayReport}
-        last7Report={last7Report}
-        last30Report={last30Report}
-        totalReport={totalReport}
-        margin={margin}
-        inventoryCost={inventoryCost}
-        paymentSplit={paymentSplit}
-        topProducts={topProducts}
-        lowStockProducts={lowStockProducts}
-        dailyTrend={dailyTrend}
-        addressReports={addressReports}
-      />
+      <CollapsibleSection
+        title="Отчёты"
+        description="День, 7 дней, 30 дней, прибыль, адреса, оплаты и остатки."
+        badge={`${dayReport.revenue.toLocaleString()} ₸`}
+        icon={<PieChart className="h-4 w-4" />}
+        id="reports"
+      >
+        <RetailReportsSection
+          selectedDate={selectedDate}
+          dayReport={dayReport}
+          last7Report={last7Report}
+          last30Report={last30Report}
+          totalReport={totalReport}
+          margin={margin}
+          inventoryCost={inventoryCost}
+          paymentSplit={paymentSplit}
+          topProducts={topProducts}
+          lowStockProducts={lowStockProducts}
+          dailyTrend={dailyTrend}
+          addressReports={addressReports}
+        />
+      </CollapsibleSection>
 
-      <RetailDebtsSection debts={openDebts} editable={editable} />
+      <CollapsibleSection
+        title="Долги"
+        description="Список долгов, номера WhatsApp и напоминания каждые 12 часов."
+        badge={`${openDebts.length} открыто`}
+        icon={<Bell className="h-4 w-4" />}
+        id="debts"
+      >
+        <RetailDebtsSection debts={openDebts} editable={editable} />
+      </CollapsibleSection>
 
       {editable && (
         <Card className="mb-5">
@@ -243,8 +275,14 @@ export default async function RetailDashboardPage({
         </Card>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card>
+      <CollapsibleSection
+        title="Товары и продажи"
+        description="Таблица товаров, продажа, возврат и календарный отчёт скрыты до открытия."
+        badge={`${productRows.length} товаров`}
+        icon={<ShoppingCart className="h-4 w-4" />}
+      >
+        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-black text-white">Таблица товаров</h2>
@@ -339,9 +377,9 @@ export default async function RetailDashboardPage({
           ) : (
             <EmptyState text="Пока товаров нет. Добавьте первый товар сверху или измените поиск." />
           )}
-        </Card>
+          </Card>
 
-        <Card>
+          <Card>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-black text-white">Отчёт по календарю</h2>
@@ -380,9 +418,19 @@ export default async function RetailDashboardPage({
           ) : (
             <EmptyState text="За выбранный день продаж нет. Выберите другой день или отметьте товар проданным." />
           )}
-        </Card>
-      </div>
-      <RetailTrashSection products={archivedProducts} />
+          </Card>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Мусор"
+        description="Удалённые товары скрыты отдельно."
+        badge={`${archivedProducts.length} товаров`}
+        icon={<Trash2 className="h-4 w-4" />}
+        id="trash"
+      >
+        <RetailTrashSection products={archivedProducts} />
+      </CollapsibleSection>
     </>
   );
 }
@@ -416,7 +464,7 @@ function RetailReportsSection({
 }) {
   const maxTrend = Math.max(...dailyTrend.map((item) => item.revenue), 1);
   return (
-    <Card className="mb-5 scroll-mt-6" id="reports">
+    <Card>
       <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
@@ -548,12 +596,51 @@ function RetailReportsSection({
   );
 }
 
+function CollapsibleSection({
+  title,
+  description,
+  badge,
+  icon,
+  id,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description: string;
+  badge: string;
+  icon: React.ReactNode;
+  id?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details id={id} open={defaultOpen} className="group mb-5 scroll-mt-6 rounded-[28px] border border-white/10 bg-white/[0.035] p-3 shadow-soft">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[22px] px-2 py-2 transition hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+            {icon}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-lg font-black text-white">{title}</span>
+            <span className="block truncate text-sm text-slate-400">{description}</span>
+          </span>
+        </div>
+        <span className="flex shrink-0 items-center gap-3">
+          <span className="hidden rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100 sm:inline-flex">{badge}</span>
+          <ChevronDown className="h-5 w-5 text-slate-500 transition group-open:rotate-180" />
+        </span>
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  );
+}
+
 function RetailDebtsSection({ debts, editable }: { debts: RetailRow[]; editable: boolean }) {
   const total = debts.reduce((sum, debt) => sum + Number(debt.amount ?? 0), 0);
   const dueCount = debts.filter(isDebtReminderDue).length;
 
   return (
-    <Card id="debts" className="mb-5 scroll-mt-6">
+    <Card>
       <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-red-300/20 bg-red-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-red-100">
@@ -644,7 +731,7 @@ function RetailDebtsSection({ debts, editable }: { debts: RetailRow[]; editable:
 
 function RetailTrashSection({ products }: { products: RetailRow[] }) {
   return (
-    <Card id="trash" className="mt-5">
+    <Card>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-red-300/20 bg-red-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-red-100">
