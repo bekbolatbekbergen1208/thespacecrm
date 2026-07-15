@@ -762,10 +762,6 @@ export async function saveRetailProduct(formData: FormData) {
     notes: value(formData, "notes") || null,
   };
 
-  if (payload.sale_price <= 0) {
-    redirect(`/dashboard/retail?error=${encodeURIComponent("Введите цену продажи")}`);
-  }
-
   const result = id
     ? await supabase.from("retail_products").update(payload).eq("id", id).eq("company_id", companyId)
     : await supabase.from("retail_products").insert({ ...payload, company_id: companyId });
@@ -795,6 +791,37 @@ export async function deleteRetailProduct(formData: FormData) {
   redirect(`${redirectPath}${joiner}saved=deleted`);
 }
 
+export async function restoreRetailProduct(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может восстановить товары")}`);
+
+  const productId = z.string().uuid().parse(value(formData, "productId"));
+  const { error } = await supabase
+    .from("retail_products")
+    .update({ status: "active" })
+    .eq("id", productId)
+    .eq("company_id", companyId);
+
+  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/retail");
+  redirect("/dashboard/retail?saved=restored");
+}
+
+export async function permanentlyDeleteRetailProduct(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может окончательно удалять товары")}`);
+
+  const productId = z.string().uuid().parse(value(formData, "productId"));
+  const { error: salesError } = await supabase.from("retail_product_sales").delete().eq("product_id", productId).eq("company_id", companyId);
+  if (salesError) redirect(`/dashboard/retail?error=${encodeURIComponent(salesError.message)}`);
+
+  const { error } = await supabase.from("retail_products").delete().eq("id", productId).eq("company_id", companyId);
+  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/dashboard/retail");
+  redirect("/dashboard/retail?saved=purged");
+}
+
 export async function markRetailProductSold(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const productId = z.string().uuid().parse(value(formData, "productId"));
@@ -812,10 +839,14 @@ export async function markRetailProductSold(formData: FormData) {
     redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
   }
 
-  const salePrice = Number(product.sale_price ?? 0);
+  const salePrice = Math.max(0, numberValue(formData, "salePrice") || Number(product.sale_price ?? 0));
   const purchasePrice = Number(product.purchase_price ?? 0);
   const totalAmount = salePrice * quantity;
   const profitAmount = (salePrice - purchasePrice) * quantity;
+
+  if (salePrice <= 0) {
+    redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent("Введите цену продажи")}`);
+  }
 
   const { error } = await supabase.from("retail_product_sales").insert({
     company_id: companyId,
@@ -832,6 +863,47 @@ export async function markRetailProductSold(formData: FormData) {
   if (error) redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
   redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&saved=sale`);
+}
+
+export async function returnRetailProduct(formData: FormData) {
+  const { supabase, companyId } = await companyContext();
+  const productId = z.string().uuid().parse(value(formData, "productId"));
+  const returnDate = value(formData, "returnDate") || new Date().toISOString().slice(0, 10);
+  const quantity = Math.max(1, numberValue(formData, "quantity"));
+
+  const { data: product, error: productError } = await supabase
+    .from("retail_products")
+    .select("id, purchase_price, sale_price")
+    .eq("company_id", companyId)
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (productError || !product) {
+    redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
+  }
+
+  const salePrice = Math.max(0, numberValue(formData, "returnPrice") || Number(product.sale_price ?? 0));
+  const purchasePrice = Number(product.purchase_price ?? 0);
+
+  if (salePrice <= 0) {
+    redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent("Введите сумму возврата")}`);
+  }
+
+  const { error } = await supabase.from("retail_product_sales").insert({
+    company_id: companyId,
+    product_id: productId,
+    sale_date: returnDate,
+    quantity: -quantity,
+    payment_method: value(formData, "paymentMethod") || "return",
+    total_amount: -(salePrice * quantity),
+    profit_amount: -((salePrice - purchasePrice) * quantity),
+    customer_name: value(formData, "customerName") || "Возврат",
+    notes: value(formData, "notes") || "Возврат товара",
+  });
+
+  if (error) redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/retail");
+  redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&saved=return`);
 }
 
 export async function saveBakerySale(formData: FormData) {

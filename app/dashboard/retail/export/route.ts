@@ -31,8 +31,8 @@ function buildCsv(sales: RetailRow[], products: RetailRow[]) {
     const product = products.find((item) => item.id === sale.product_id);
     const quantity = Number(sale.quantity ?? 0);
     const purchasePrice = Number(product?.purchase_price ?? 0);
-    const salePrice = Number(product?.sale_price ?? 0);
-    const revenue = Number(sale.total_amount ?? salePrice * quantity);
+    const revenue = Number(sale.total_amount ?? 0);
+    const salePrice = quantity ? Math.abs(revenue / quantity) : Number(product?.sale_price ?? 0);
     const profit = Number(sale.profit_amount ?? (salePrice - purchasePrice) * quantity);
 
     rows.push([

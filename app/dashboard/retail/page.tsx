@@ -1,9 +1,9 @@
-import { deleteRetailProduct, markRetailProductSold, saveRetailProduct } from "@/app/actions";
+import { deleteRetailProduct, markRetailProductSold, permanentlyDeleteRetailProduct, restoreRetailProduct, returnRetailProduct, saveRetailProduct } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
-import { BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bot, CalendarDays, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
 type RetailRow = {
   id: string;
@@ -15,7 +15,7 @@ type RetailRow = {
 export default async function RetailDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string }>;
 }) {
   const [{ supabase, membership }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
@@ -33,12 +33,14 @@ export default async function RetailDashboardPage({
   const saleRows = (sales ?? []) as RetailRow[];
   const allProducts = (products ?? []) as RetailRow[];
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
+  const archivedProducts = allProducts.filter((product) => product.status === "archived");
   const productRows = activeProducts.filter((product) => {
     const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
     return !query || text.includes(query);
   });
   const summaries = productRows.map((product) => summarizeProduct(product, saleRows));
   const daySales = saleRows.filter((sale) => sale.sale_date === selectedDate);
+  const dayReturns = daySales.filter((sale) => Number(sale.quantity ?? 0) < 0);
   const dayReport = sumSales(daySales);
   const totalReport = sumSales(saleRows);
   const totalRemaining = activeProducts.reduce((sum, product) => sum + summarizeProduct(product, saleRows).remaining, 0);
@@ -60,12 +62,17 @@ export default async function RetailDashboardPage({
   const inventorySaleValue = summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.sale_price ?? 0), 0);
   const margin = totalReport.revenue ? Math.round((totalReport.profit / totalReport.revenue) * 100) : 0;
   const dailyTrend = lastSevenDays(selectedDate).map((date) => ({ date, ...sumSales(saleRows.filter((sale) => sale.sale_date === date)) }));
+  const aiQuestion = params.aiq ?? "";
+  const assistantAnswer = aiQuestion
+    ? answerRetailQuestion({ question: aiQuestion, selectedDate, products: activeProducts, archivedProducts, sales: saleRows, daySales, summaries, dayReport, totalReport })
+    : "";
+  const assistantInsights = buildRetailAssistantInsights({ activeProducts, archivedProducts, summaries, dayReport, dayReturns });
 
   return (
     <>
       <PageHeader
         title="Retail Store"
-        description="Продажи товаров: фото, название, закупочная цена, продажная цена, остатки, календарь и отчёты."
+        description="Продажи товаров: фото, название, закупочная цена, цена при продаже, возвраты, мусор, AI ассистент и отчёты."
       />
 
       {params.error && <p className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{params.error}</p>}
@@ -81,14 +88,18 @@ export default async function RetailDashboardPage({
       )}
       {params.saved === "product" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар сохранён.</p>}
       {params.saved === "sale" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продажа сохранена.</p>}
+      {params.saved === "return" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Возврат сохранён.</p>}
       {params.saved === "deleted" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар удалён.</p>}
+      {params.saved === "restored" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар восстановлен.</p>}
+      {params.saved === "purged" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар окончательно удалён.</p>}
 
-      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <Metric title="Товары" value={allProducts.length} note={query ? "найдено по поиску" : "в каталоге"} icon={<Package className="h-4 w-4" />} />
+      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <Metric title="Товары" value={activeProducts.length} note={`остаток ${totalRemaining} шт`} icon={<Package className="h-4 w-4" />} />
         <Metric title="Продано сегодня" value={dayReport.quantity} note={selectedDate} icon={<ShoppingCart className="h-4 w-4" />} />
         <Metric title="Выручка" value={`${dayReport.revenue.toLocaleString()} ₸`} note="за выбранный день" icon={<CircleDollarSign className="h-4 w-4" />} />
         <Metric title="Прибыль" value={`${dayReport.profit.toLocaleString()} ₸`} note={`Всего ${totalReport.profit.toLocaleString()} ₸`} icon={<BarChart3 className="h-4 w-4" />} danger={dayReport.profit < 0} />
-        <Metric title="Остаток" value={totalRemaining} note="товаров осталось" icon={<CheckCircle2 className="h-4 w-4" />} danger={totalRemaining <= 3 && allProducts.length > 0} />
+        <Metric title="Возвраты" value={Math.abs(dayReturns.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0))} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} danger={dayReturns.length > 0} />
+        <Metric title="Мусор" value={archivedProducts.length} note="архивные товары" icon={<Trash2 className="h-4 w-4" />} danger={archivedProducts.length > 0} />
       </div>
 
       <Card className="mb-5">
@@ -119,6 +130,49 @@ export default async function RetailDashboardPage({
         </div>
       </Card>
 
+      <Card id="assistant" className="mb-5">
+        <div className="grid gap-5 xl:grid-cols-[1fr_1.1fr]">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
+              <Bot className="h-3.5 w-3.5" />
+              AI ассистент
+            </p>
+            <h2 className="mt-3 text-2xl font-black text-white">Помощник Retail Store</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Отвечает по товарам, остаткам, возвратам, прибыли и мусору. Сейчас работает без внешнего API, поэтому ответы появляются сразу по данным CRM.
+            </p>
+            <div className="mt-4 grid gap-3">
+              {assistantInsights.map((item) => (
+                <AssistantInsight key={item.title} title={item.title} detail={item.detail} tone={item.tone} />
+              ))}
+            </div>
+          </div>
+          <form action="/dashboard/retail#assistant" className="rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
+            <input type="hidden" name="date" value={selectedDate} />
+            {params.q && <input type="hidden" name="q" value={params.q} />}
+            <label>
+              <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Спросить у ассистента</span>
+              <textarea
+                name="aiq"
+                defaultValue={aiQuestion}
+                placeholder="Например: какие товары заканчиваются, какая прибыль, сколько возвратов, что в мусоре?"
+                className="premium-input min-h-28 w-full px-4 py-3 text-sm text-white outline-none"
+              />
+            </label>
+            <button className="premium-button mt-3 h-11 bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+              <Bot className="h-4 w-4" />
+              Спросить
+            </button>
+            {assistantAnswer && (
+              <div className="mt-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Ответ</p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-100">{assistantAnswer}</p>
+              </div>
+            )}
+          </form>
+        </div>
+      </Card>
+
       <RetailReportsSection
         selectedDate={selectedDate}
         dayReport={dayReport}
@@ -142,7 +196,7 @@ export default async function RetailDashboardPage({
             </span>
             <div>
               <h2 className="text-xl font-black text-white">Добавить товар</h2>
-              <p className="text-sm text-slate-400">Заполните название, адрес, фото, закупочную/продажную цену и количество.</p>
+              <p className="text-sm text-slate-400">Заполните название, адрес, фото, закупочную цену и количество. Цену продажи вводите при продаже.</p>
             </div>
           </div>
           <form action={saveRetailProduct} className="grid gap-4 xl:grid-cols-4">
@@ -152,7 +206,6 @@ export default async function RetailDashboardPage({
             <CameraPhotoField label="Фото товара" />
             <Field label="Фото-поиск / ключи" name="photoKeywords" required={false} />
             <Field label="Закупили за" name="purchasePrice" type="number" defaultValue={0} />
-            <Field label="Продадите за" name="salePrice" type="number" defaultValue={0} />
             <Field label="Количество" name="initialQuantity" type="number" defaultValue={0} />
             <Select label="Статус" name="status" defaultValue="active">
               <option value="active">Активный</option>
@@ -205,8 +258,8 @@ export default async function RetailDashboardPage({
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <p className="font-black text-white">{Number(product.sale_price ?? 0).toLocaleString()} ₸</p>
-                          <p className="text-xs text-slate-500">закуп {Number(product.purchase_price ?? 0).toLocaleString()} ₸</p>
+                          <p className="font-black text-white">{Number(product.purchase_price ?? 0).toLocaleString()} ₸</p>
+                          <p className="text-xs text-slate-500">закупочная цена</p>
                         </td>
                         <td className="px-4 py-4 text-slate-300">{sold} шт</td>
                         <td className="px-4 py-4">
@@ -229,6 +282,9 @@ export default async function RetailDashboardPage({
                             <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
                             <div className="grid grid-cols-2 gap-2">
                               <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                              <input name="salePrice" type="number" min="0" placeholder="Цена" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
                               <select name="paymentMethod" defaultValue="cash" className="premium-input h-9 px-3 text-xs text-white outline-none">
                                 <option value="cash">Нал</option>
                                 <option value="kaspi">Kaspi</option>
@@ -238,6 +294,19 @@ export default async function RetailDashboardPage({
                             </div>
                             <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
                             <SmallButton>Продано</SmallButton>
+                          </form>
+                          <form action={returnRetailProduct} className="mt-3 grid min-w-56 gap-2 rounded-2xl border border-yellow-300/20 bg-yellow-300/5 p-2">
+                            <input type="hidden" name="productId" value={product.id} />
+                            <input type="date" name="returnDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                              <input name="returnPrice" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                            </div>
+                            <input name="customerName" placeholder="Кто вернул" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                            <button className="premium-button h-9 w-full justify-center border border-yellow-300/20 bg-yellow-300/10 px-3 text-xs font-black text-yellow-100 hover:bg-yellow-300/15">
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              Возврат
+                            </button>
                           </form>
                         </td>
                       </tr>
@@ -292,6 +361,7 @@ export default async function RetailDashboardPage({
           )}
         </Card>
       </div>
+      <RetailTrashSection products={archivedProducts} />
     </>
   );
 }
@@ -412,6 +482,72 @@ function RetailReportsSection({
         </ReportList>
       </div>
     </Card>
+  );
+}
+
+function RetailTrashSection({ products }: { products: RetailRow[] }) {
+  return (
+    <Card id="trash" className="mt-5">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-red-300/20 bg-red-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-red-100">
+            <Trash2 className="h-3.5 w-3.5" />
+            Мусор
+          </p>
+          <h2 className="mt-3 text-xl font-black text-white">Удалённые товары</h2>
+          <p className="mt-1 text-sm text-slate-400">Здесь товары, которые скрыты из основной таблицы. Их можно восстановить или удалить окончательно.</p>
+        </div>
+        <span className="w-fit rounded-full bg-red-500/10 px-3 py-1 text-xs font-black text-red-100">{products.length} в мусоре</span>
+      </div>
+      {products.length ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {products.map((product) => (
+            <div key={product.id} className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+              <div className="flex items-center gap-3">
+                <ProductPhoto src={String(product.photo_url ?? "")} name={String(product.name ?? "Товар")} />
+                <div>
+                  <p className="font-black text-white">{product.name}</p>
+                  <p className="text-xs text-slate-500">{product.category || "Без категории"}</p>
+                  {product.address && <p className="mt-1 text-xs font-semibold text-cyan-100/80">{product.address}</p>}
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <form action={restoreRetailProduct}>
+                  <input type="hidden" name="productId" value={product.id} />
+                  <button className="premium-button h-10 w-full justify-center border border-emerald-300/20 bg-emerald-300/10 px-3 text-xs font-black text-emerald-100 hover:bg-emerald-300/15">
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                    Вернуть
+                  </button>
+                </form>
+                <form action={permanentlyDeleteRetailProduct}>
+                  <input type="hidden" name="productId" value={product.id} />
+                  <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Удалить навсегда
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState text="Мусор пуст. Удалённые товары появятся здесь." />
+      )}
+    </Card>
+  );
+}
+
+function AssistantInsight({ title, detail, tone }: { title: string; detail: string; tone: "good" | "warn" | "bad" }) {
+  const toneClass = {
+    good: "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
+    warn: "border-yellow-300/20 bg-yellow-300/10 text-yellow-100",
+    bad: "border-red-300/20 bg-red-500/10 text-red-100",
+  }[tone];
+  return (
+    <div className={`rounded-3xl border p-4 ${toneClass}`}>
+      <p className="font-black">{title}</p>
+      <p className="mt-1 text-sm leading-6 opacity-85">{detail}</p>
+    </div>
   );
 }
 
@@ -544,6 +680,135 @@ function paymentLabel(method: string) {
     kaspi: "Kaspi",
     card: "Карта",
     transfer: "Перевод",
+    return: "Возврат",
   };
   return labels[method] ?? method;
+}
+
+function buildRetailAssistantInsights({
+  activeProducts,
+  archivedProducts,
+  summaries,
+  dayReport,
+  dayReturns,
+}: {
+  activeProducts: RetailRow[];
+  archivedProducts: RetailRow[];
+  summaries: Array<ReturnType<typeof summarizeProduct>>;
+  dayReport: ReturnType<typeof sumSales>;
+  dayReturns: RetailRow[];
+}) {
+  const lowStock = summaries.filter((item) => item.remaining <= 3);
+  const items: Array<{ title: string; detail: string; tone: "good" | "warn" | "bad" }> = [];
+
+  items.push({
+    title: dayReport.profit >= 0 ? "День в плюсе" : "День в минусе",
+    detail: `Сегодня выручка ${dayReport.revenue.toLocaleString()} ₸, прибыль ${dayReport.profit.toLocaleString()} ₸.`,
+    tone: dayReport.profit >= 0 ? "good" : "bad",
+  });
+
+  items.push({
+    title: lowStock.length ? "Есть низкий остаток" : "Остатки нормальные",
+    detail: lowStock.length
+      ? `Проверьте: ${lowStock.slice(0, 4).map((item) => `${item.product.name} (${item.remaining} шт)`).join(", ")}.`
+      : `${activeProducts.length} активных товаров без критического остатка.`,
+    tone: lowStock.length ? "warn" : "good",
+  });
+
+  items.push({
+    title: dayReturns.length ? "Есть возвраты" : "Возвратов нет",
+    detail: dayReturns.length
+      ? `За день оформлено ${Math.abs(dayReturns.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0))} шт возврата.`
+      : "Сегодня возвраты не записаны.",
+    tone: dayReturns.length ? "warn" : "good",
+  });
+
+  items.push({
+    title: archivedProducts.length ? "В мусоре есть товары" : "Мусор пуст",
+    detail: archivedProducts.length ? `${archivedProducts.length} товаров скрыто из основной таблицы.` : "Архивных товаров нет.",
+    tone: archivedProducts.length ? "warn" : "good",
+  });
+
+  return items;
+}
+
+function answerRetailQuestion({
+  question,
+  selectedDate,
+  products,
+  archivedProducts,
+  sales,
+  daySales,
+  summaries,
+  dayReport,
+  totalReport,
+}: {
+  question: string;
+  selectedDate: string;
+  products: RetailRow[];
+  archivedProducts: RetailRow[];
+  sales: RetailRow[];
+  daySales: RetailRow[];
+  summaries: Array<ReturnType<typeof summarizeProduct>>;
+  dayReport: ReturnType<typeof sumSales>;
+  totalReport: ReturnType<typeof sumSales>;
+}) {
+  const q = question.toLowerCase();
+  const wantsProfit = /прибыл|пайда|доход|выруч|табыс|ақша|акша|деньг|сумм/.test(q);
+  const wantsStock = /остат|қалды|калды|склад|товар|заканч|мало/.test(q);
+  const wantsReturns = /возврат|қайтар|кайтар|вернул/.test(q);
+  const wantsTrash = /мусор|архив|удален|удалён|trash/.test(q);
+  const wantsTop = /топ|лучший|көп|коп|много|продан/.test(q);
+
+  if (wantsProfit) {
+    return [
+      `Отчёт за ${selectedDate}:`,
+      `- Выручка: ${dayReport.revenue.toLocaleString()} ₸`,
+      `- Прибыль: ${dayReport.profit.toLocaleString()} ₸`,
+      `- Количество: ${dayReport.quantity} шт`,
+      `\nВся история: выручка ${totalReport.revenue.toLocaleString()} ₸, прибыль ${totalReport.profit.toLocaleString()} ₸.`,
+    ].join("\n");
+  }
+
+  if (wantsStock) {
+    const low = summaries.filter((item) => item.remaining <= 3);
+    if (!low.length) return `Остатки нормальные. Активных товаров: ${products.length}.`;
+    return `Товары с низким остатком:\n${low.slice(0, 10).map((item) => `- ${String(item.product.name)}: ${item.remaining} шт`).join("\n")}`;
+  }
+
+  if (wantsReturns) {
+    const returns = daySales.filter((sale) => Number(sale.quantity ?? 0) < 0);
+    if (!returns.length) return `За ${selectedDate} возвратов нет.`;
+    return [
+      `Возвраты за ${selectedDate}: ${returns.length} записей.`,
+      ...returns.slice(0, 10).map((sale) => {
+        const product = products.find((item) => item.id === sale.product_id) ?? archivedProducts.find((item) => item.id === sale.product_id);
+        return `- ${String(product?.name ?? "Товар")}: ${Math.abs(Number(sale.quantity ?? 0))} шт, сумма ${Math.abs(Number(sale.total_amount ?? 0)).toLocaleString()} ₸`;
+      }),
+    ].join("\n");
+  }
+
+  if (wantsTrash) {
+    if (!archivedProducts.length) return "Мусор пуст. Архивных товаров нет.";
+    return `В мусоре ${archivedProducts.length} товаров:\n${archivedProducts.slice(0, 10).map((item) => `- ${String(item.name ?? "Товар")}`).join("\n")}`;
+  }
+
+  if (wantsTop) {
+    const top = summaries
+      .filter((item) => item.sold > 0)
+      .sort((a, b) => b.sold - a.sold)
+      .slice(0, 8);
+    if (!top.length) return "Продаж пока нет, топ товаров ещё не сформирован.";
+    return `Топ продаж:\n${top.map((item, index) => `${index + 1}. ${String(item.product.name)} — ${item.sold} шт, прибыль ${item.profit.toLocaleString()} ₸`).join("\n")}`;
+  }
+
+  return [
+    "Я могу ответить по Retail Store. Попробуйте спросить:",
+    "- какая прибыль сегодня?",
+    "- какие товары заканчиваются?",
+    "- сколько возвратов?",
+    "- что в мусоре?",
+    "- какие товары продаются лучше?",
+    `\nВсего продаж в базе: ${sales.length}. Активных товаров: ${products.length}.`,
+  ].join("\n");
 }
