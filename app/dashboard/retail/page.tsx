@@ -175,7 +175,6 @@ export default async function RetailDashboardPage({
             <div>
               <h2 className="text-xl font-black text-white">Таблица товаров</h2>
               <p className="text-sm text-slate-400">Можно назначить товар проданным и сразу увидеть остаток.</p>
-              {!editable && <p className="mt-1 text-xs font-semibold text-yellow-100/80">Удаление товаров доступно только founder/admin/manager.</p>}
             </div>
             <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">{productRows.length} товаров</span>
           </div>
@@ -217,16 +216,14 @@ export default async function RetailDashboardPage({
                           <p className="mt-2 text-xs text-slate-500">прибыль {profit.toLocaleString()} ₸</p>
                         </td>
                         <td className="px-4 py-4">
-                          {editable && (
-                            <form action={deleteRetailProduct} className="mb-3">
-                              <input type="hidden" name="productId" value={product.id} />
-                              <input type="hidden" name="selectedDate" value={selectedDate} />
-                              <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Удалить товар
-                              </button>
-                            </form>
-                          )}
+                          <form action={deleteRetailProduct} className="mb-3">
+                            <input type="hidden" name="productId" value={product.id} />
+                            <input type="hidden" name="selectedDate" value={selectedDate} />
+                            <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Удалить товар
+                            </button>
+                          </form>
                           <form action={markRetailProductSold} className="grid min-w-56 gap-2">
                             <input type="hidden" name="productId" value={product.id} />
                             <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
