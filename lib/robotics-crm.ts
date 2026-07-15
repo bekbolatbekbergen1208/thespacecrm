@@ -130,7 +130,7 @@ export const roboticsModules: Record<RoboticsModuleKey, RoboticsModule> = {
     fields: [
       { name: "student_name", label: "Ученик" },
       { name: "lesson_date", label: "Дата занятия", type: "date" },
-      { name: "status", label: "Статус", type: "select", options: ["присутствовал", "отсутствовал", "опоздал"] },
+      { name: "status", label: "Статус", type: "select", options: ["присутствовал", "отсутствовал", "опоздал", "уважительный"] },
       { name: "group_name", label: "Группа", required: false },
       { name: "mentor_name", label: "Ментор", required: false },
       { name: "comment", label: "Комментарий", type: "textarea", required: false },

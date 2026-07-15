@@ -489,6 +489,7 @@ function AttendanceJournalPanel({
                   <JournalStatusButton student={student} status="присутствовал" date={today} active={todayRecord?.status === "присутствовал"} />
                   <JournalStatusButton student={student} status="опоздал" date={today} active={todayRecord?.status === "опоздал"} />
                   <JournalStatusButton student={student} status="отсутствовал" date={today} active={todayRecord?.status === "отсутствовал"} danger />
+                  <JournalStatusButton student={student} status="уважительный" date={today} active={todayRecord?.status === "уважительный"} />
                   <a href={`/dashboard/education/subscriptions?group=${encodeURIComponent(String(student.group_name ?? ""))}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-black text-slate-800 transition hover:border-blue-200 hover:text-blue-700">Оплач. дни</a>
                   <a href={student.whatsapp || student.parent_phone ? `https://wa.me/${String(student.whatsapp ?? student.parent_phone).replace(/\D/g, "")}` : "#"} className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-800 transition hover:border-emerald-200 hover:text-emerald-700">
                     <MessageCircle className="h-3.5 w-3.5" /> Сообщения
@@ -521,7 +522,7 @@ function JournalStatusButton({
   danger = false,
 }: {
   student: RoboticsRow;
-  status: "присутствовал" | "отсутствовал" | "опоздал";
+  status: "присутствовал" | "отсутствовал" | "опоздал" | "уважительный";
   date: string;
   active?: boolean;
   danger?: boolean;
@@ -538,7 +539,7 @@ function JournalStatusButton({
           ? danger ? "bg-rose-600 text-white" : "bg-emerald-600 text-white"
           : danger ? "border border-rose-200 bg-white text-rose-700 hover:bg-rose-50" : "border border-slate-200 bg-white text-slate-800 hover:bg-emerald-50"
       }`}>
-        {status === "присутствовал" ? "Был" : status === "опоздал" ? "Опоздал" : "Нет"}
+        {status === "присутствовал" ? "Был" : status === "опоздал" ? "Опоздал" : status === "уважительный" ? "Уваж." : "Нет"}
       </button>
     </form>
   );
@@ -572,13 +573,14 @@ function GroupsPanel({
 
   return (
     <Card className="mt-5">
-      <div className="mb-5 flex items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-100"><Users className="h-3.5 w-3.5" /> Группы</p>
-          <h2 className="mt-1 text-xl font-black tracking-tight">Профили групп и расписание</h2>
+          <h2 className="mt-1 text-3xl font-black tracking-tight md:text-4xl">Профили групп и посещаемость</h2>
+          <p className="mt-2 text-sm text-slate-400">Откройте группу, добавьте учеников и отмечайте 8 занятий быстрыми ячейками.</p>
         </div>
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-6">
         {groups.map((group) => {
           const groupName = String(group.name ?? "");
           const groupStudents = students.filter((student) => student.group_name === groupName);
@@ -589,13 +591,14 @@ function GroupsPanel({
           const groupPresentToday = groupTodayAttendance.filter((item) => item.status === "присутствовал" || item.status === "опоздал").length;
           const availableStudents = students.filter((student) => student.group_name !== groupName);
           const unassigned = students.filter((student) => !student.group_name);
+          const attendanceSlots = groupAttendanceSlots(groupLessons, today);
 
           return (
-            <details key={group.id} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 transition open:border-cyan-300/25 open:bg-cyan-300/[0.035]">
+            <details key={group.id} className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 transition open:border-cyan-300/25 open:bg-cyan-300/[0.035] md:p-7">
               <summary className="cursor-pointer list-none">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h3 className="text-lg font-black text-white">{groupName}</h3>
+                  <h3 className="text-3xl font-black text-white md:text-4xl">{groupName}</h3>
                   <p className="mt-1 text-sm text-slate-400">{String(group.course ?? "-")} • {String(group.level ?? "-")} • {String(group.room ?? "-")}</p>
                   <p className="mt-2 text-sm text-slate-300">{String(group.schedule_days ?? "-")} {String(group.start_time ?? "")}-{String(group.end_time ?? "")}</p>
                   <p className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-slate-300">
@@ -607,7 +610,7 @@ function GroupsPanel({
                 </span>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              <div className="mt-5 grid gap-3 sm:grid-cols-4">
                 <MiniStat label="Ученики" value={groupStudents.length} />
                 <MiniStat label="Уроки" value={groupLessons.length} />
                 <MiniStat label="Оплаты" value={groupPayments.length} />
@@ -645,7 +648,75 @@ function GroupsPanel({
                 <SmallButton>Сохранить ментора</SmallButton>
               </form>
 
-              <div className="mt-5 grid gap-4 xl:grid-cols-3">
+              <div className="mt-6 rounded-[1.75rem] border border-cyan-300/15 bg-slate-950/35 p-4 md:p-5">
+                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
+                      <Check className="h-3.5 w-3.5" /> Журнал 8 занятий
+                    </p>
+                    <h4 className="mt-1 text-2xl font-black text-white">Быстрая посещаемость внутри группы</h4>
+                    <p className="mt-1 text-sm text-slate-400">Клик по ячейке: Б → НБ → Уваж. → Б</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs font-black">
+                    <span className="rounded-full bg-emerald-400 px-3 py-1 text-emerald-950">Б - был</span>
+                    <span className="rounded-full bg-red-500 px-3 py-1 text-white">НБ - не был</span>
+                    <span className="rounded-full bg-violet-300 px-3 py-1 text-violet-950">Уваж. - уважительно</span>
+                  </div>
+                </div>
+                {!groupStudents.length && <p className="rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-4 text-sm text-slate-400">Сначала добавьте учеников в группу.</p>}
+                {!!groupStudents.length && (
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[920px] overflow-hidden rounded-3xl border border-white/10">
+                      <div className="grid grid-cols-[240px_repeat(8,minmax(76px,1fr))] bg-slate-950/70 text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                        <div className="px-4 py-3">Ученик</div>
+                        {attendanceSlots.map((slot, index) => (
+                          <div key={slot.date} className="border-l border-white/10 px-3 py-3 text-center">
+                            <p>#{index + 1}</p>
+                            <p className="mt-1 text-[10px] normal-case tracking-normal text-slate-500">{slot.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="divide-y divide-white/10">
+                        {groupStudents.map((student) => {
+                          const name = fullName(student);
+                          const missed = missedLessonsCount(attendance, name);
+                          return (
+                            <div key={student.id} className={`grid grid-cols-[240px_repeat(8,minmax(76px,1fr))] items-stretch ${missed >= 8 ? "bg-red-500/10" : "bg-white/[0.025]"}`}>
+                              <div className="px-4 py-4">
+                                <p className="truncate font-black text-white">{name}</p>
+                                <p className="mt-1 truncate text-xs text-slate-500">{String(student.parent_phone ?? student.whatsapp ?? "телефон жоқ")}</p>
+                                {missed >= 8 && <p className="mt-2 inline-flex rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">8+ пропуск</p>}
+                              </div>
+                              {attendanceSlots.map((slot) => {
+                                const record = groupAttendance.find((item) => item.student_name === name && item.lesson_date === slot.date);
+                                const currentStatus = String(record?.status ?? "");
+                                const nextStatus = nextCycleAttendanceStatus(currentStatus);
+                                return (
+                                  <form key={`${student.id}-${slot.date}`} action={saveJournalAttendance} className="border-l border-white/10 p-2">
+                                    <input type="hidden" name="studentName" value={name} />
+                                    <input type="hidden" name="groupName" value={groupName} />
+                                    <input type="hidden" name="mentorName" value={String(group.mentor_name ?? "")} />
+                                    <input type="hidden" name="lessonDate" value={slot.date} />
+                                    <input type="hidden" name="status" value={nextStatus} />
+                                    <button
+                                      title={`${slot.label}: ${currentStatus || "пусто"} → ${nextStatus}`}
+                                      className={`h-14 w-full rounded-2xl border text-sm font-black transition hover:scale-[1.02] ${attendanceCellClass(currentStatus)}`}
+                                    >
+                                      {statusShort(currentStatus) || "·"}
+                                    </button>
+                                  </form>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
                   <p className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500"><UserPlus className="h-3.5 w-3.5" /> Добавить из табеля</p>
                   <details open className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
@@ -738,6 +809,7 @@ function GroupsPanel({
                               <JournalStatusButton student={student} status="присутствовал" date={today} active={todayRecord?.status === "присутствовал"} />
                               <JournalStatusButton student={student} status="опоздал" date={today} active={todayRecord?.status === "опоздал"} />
                               <JournalStatusButton student={student} status="отсутствовал" date={today} active={todayRecord?.status === "отсутствовал"} danger />
+                              <JournalStatusButton student={student} status="уважительный" date={today} active={todayRecord?.status === "уважительный"} />
                             </div>
                           </div>
                         );
@@ -746,7 +818,7 @@ function GroupsPanel({
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 xl:col-span-2">
                   <p className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500"><CalendarDays className="h-3.5 w-3.5" /> Автоуроки</p>
                   <form action={createLessonsFromGroupSchedule} className="grid gap-2">
                     <input type="hidden" name="groupId" value={group.id} />
@@ -1054,6 +1126,7 @@ function ScheduleEventCard({
                         ["присутствовал", "Был"],
                         ["отсутствовал", "Нет"],
                         ["опоздал", "Опоздал"],
+                        ["уважительный", "Уваж."],
                       ].map(([status, label]) => (
                         <form key={`${student.id}-${status}`} action={saveSingleLessonAttendance}>
                           <input type="hidden" name="lessonId" value={event.id} />
@@ -1128,6 +1201,7 @@ function ScheduleEventCard({
                       <option value="присутствовал">присутствовал</option>
                       <option value="отсутствовал">отсутствовал</option>
                       <option value="опоздал">опоздал</option>
+                      <option value="уважительный">уважительный</option>
                     </select>
                     <input name={`comment:${name}`} defaultValue={String(current?.comment ?? "")} placeholder="Комментарий" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none" />
                   </div>
@@ -1290,8 +1364,44 @@ function fullName(row: RoboticsRow) {
 function statusShort(status: string) {
   if (status === "присутствовал") return "Б";
   if (status === "опоздал") return "О";
-  if (status === "отсутствовал") return "Н";
+  if (status === "отсутствовал") return "НБ";
+  if (status === "уважительный") return "У";
   return status.slice(0, 1).toUpperCase();
+}
+
+function nextCycleAttendanceStatus(status: string) {
+  if (status === "присутствовал") return "отсутствовал";
+  if (status === "отсутствовал") return "уважительный";
+  if (status === "уважительный") return "присутствовал";
+  return "присутствовал";
+}
+
+function groupAttendanceSlots(lessons: RoboticsRow[], today: string) {
+  const lessonDates = unique(
+    lessons
+      .map((lesson) => String(lesson.lesson_date ?? ""))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b)),
+  );
+  const nearDates = lessonDates.filter((date) => date >= dateMinus(today, 14)).slice(0, 8);
+  const dates = nearDates.length >= 8 ? nearDates : lastEightDates(today);
+  return dates.slice(0, 8).map((date) => ({ date, label: formatShortDate(date) }));
+}
+
+function lastEightDates(dateString: string) {
+  return Array.from({ length: 8 }).map((_, index) => dateMinus(dateString, 7 - index));
+}
+
+function dateMinus(dateString: string, days: number) {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateString;
+  date.setDate(date.getDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatShortDate(dateString: string) {
+  const [, month, day] = dateString.split("-");
+  return `${day}.${month}`;
 }
 
 function initials(name: string) {
@@ -1303,6 +1413,7 @@ function attendancePillClass(status: string) {
   if (status === "присутствовал") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "опоздал") return "border-amber-200 bg-amber-50 text-amber-700";
   if (status === "отсутствовал") return "border-red-200 bg-red-50 text-red-700";
+  if (status === "уважительный") return "border-violet-200 bg-violet-50 text-violet-700";
   return "border-blue-100 bg-blue-50 text-blue-700";
 }
 
@@ -1310,13 +1421,23 @@ function attendanceStatusClass(status: string) {
   if (status === "присутствовал") return "bg-emerald-100 text-emerald-800";
   if (status === "опоздал") return "bg-amber-100 text-amber-800";
   if (status === "отсутствовал") return "bg-red-100 text-red-800";
+  if (status === "уважительный") return "bg-violet-100 text-violet-800";
   return "bg-slate-100 text-slate-600";
+}
+
+function attendanceCellClass(status: string) {
+  if (status === "присутствовал") return "border-emerald-300 bg-emerald-400 text-emerald-950 shadow-lg shadow-emerald-950/10";
+  if (status === "отсутствовал") return "border-red-400 bg-red-500 text-white shadow-lg shadow-red-950/20";
+  if (status === "уважительный") return "border-violet-300 bg-violet-300 text-violet-950 shadow-lg shadow-violet-950/10";
+  if (status === "опоздал") return "border-amber-300 bg-amber-300 text-amber-950";
+  return "border-white/10 bg-slate-950/60 text-slate-500 hover:border-cyan-300/40 hover:bg-cyan-300/10 hover:text-cyan-100";
 }
 
 function quickAttendanceButtonClass(status: string, currentStatus: string) {
   const active = status === currentStatus;
   if (status === "присутствовал") return active ? "border-emerald-600 bg-emerald-600 text-white" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100";
   if (status === "опоздал") return active ? "border-amber-500 bg-amber-500 text-white" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100";
+  if (status === "уважительный") return active ? "border-violet-500 bg-violet-500 text-white" : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100";
   return active ? "border-red-600 bg-red-600 text-white" : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100";
 }
 

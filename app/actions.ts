@@ -1514,7 +1514,7 @@ export async function saveJournalAttendance(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const studentName = z.string().min(1).parse(value(formData, "studentName"));
   const lessonDate = value(formData, "lessonDate") || new Date().toISOString().slice(0, 10);
-  const status = z.enum(["присутствовал", "отсутствовал", "опоздал"]).parse(value(formData, "status"));
+  const status = z.enum(["присутствовал", "отсутствовал", "опоздал", "уважительный"]).parse(value(formData, "status"));
   const groupName = value(formData, "groupName") || null;
   const mentorName = value(formData, "mentorName") || null;
   const comment = value(formData, "comment") || null;
@@ -1615,7 +1615,7 @@ export async function saveMentorLessonSession(formData: FormData) {
   const lessonId = lessonResult.data.id;
 
   for (const studentName of studentNames) {
-    const status = z.enum(["присутствовал", "отсутствовал", "опоздал"]).parse(value(formData, `status:${studentName}`) || "присутствовал");
+    const status = z.enum(["присутствовал", "отсутствовал", "опоздал", "уважительный"]).parse(value(formData, `status:${studentName}`) || "присутствовал");
     const comment = value(formData, `comment:${studentName}`) || null;
     const scoreRaw = value(formData, `score:${studentName}`);
     const score = scoreRaw ? z.coerce.number().min(0).max(100).parse(scoreRaw) : null;
