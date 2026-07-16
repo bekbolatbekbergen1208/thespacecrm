@@ -630,7 +630,7 @@ function GroupsPanel({
           const groupPresentToday = groupTodayAttendance.filter((item) => item.status === "присутствовал" || item.status === "опоздал").length;
           const availableStudents = students.filter((student) => student.group_name !== groupName);
           const unassigned = students.filter((student) => !student.group_name);
-          const attendanceSlots = groupAttendanceSlots(groupLessons, today);
+          const attendanceSlots = groupAttendanceSlots(groupLessons, groupAttendance, today);
 
           return (
             <details key={group.id} className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 transition open:border-cyan-300/25 open:bg-cyan-300/[0.035] md:p-7">
@@ -1415,16 +1415,34 @@ function nextCycleAttendanceStatus(status: string) {
   return "присутствовал";
 }
 
-function groupAttendanceSlots(lessons: RoboticsRow[], today: string) {
+function groupAttendanceSlots(lessons: RoboticsRow[], attendance: RoboticsRow[], today: string) {
+  const markedDates = unique(
+    attendance
+      .map((item) => String(item.lesson_date ?? ""))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b)),
+  ).slice(-8);
   const lessonDates = unique(
     lessons
       .map((lesson) => String(lesson.lesson_date ?? ""))
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b)),
   );
-  const nearDates = lessonDates.filter((date) => date >= dateMinus(today, 14)).slice(0, 8);
-  const dates = nearDates.length >= 8 ? nearDates : lastEightDates(today);
-  return dates.slice(0, 8).map((date) => ({ date, label: formatShortDate(date) }));
+  const fallbackDates = unique([
+    ...lessonDates.filter((date) => date >= dateMinus(today, 14)),
+    ...lastEightDates(today),
+  ]).sort((a, b) => b.localeCompare(a));
+  const pickedDates = [...markedDates];
+
+  for (const date of fallbackDates) {
+    if (pickedDates.length >= 8) break;
+    if (!pickedDates.includes(date)) pickedDates.push(date);
+  }
+
+  return pickedDates
+    .sort((a, b) => a.localeCompare(b))
+    .slice(-8)
+    .map((date) => ({ date, label: formatShortDate(date) }));
 }
 
 function lastEightDates(dateString: string) {
