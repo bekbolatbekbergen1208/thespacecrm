@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
 import type { Role } from "@/lib/supabase/types";
 
@@ -14,7 +15,7 @@ export type MembershipContext = {
     | null;
 };
 
-export async function getSessionContext() {
+export const getSessionContext = cache(async function getSessionContext() {
   if (!hasSupabaseEnv()) {
     return { setupMissing: true as const };
   }
@@ -37,7 +38,7 @@ export async function getSessionContext() {
     .maybeSingle();
 
   return { setupMissing: false as const, user, supabase, membership: membership as MembershipContext | null };
-}
+});
 
 export async function requireUser() {
   const context = await getSessionContext();
