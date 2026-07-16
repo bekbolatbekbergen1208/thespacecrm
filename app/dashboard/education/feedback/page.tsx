@@ -1,5 +1,5 @@
-import { RoboticsModulePage } from "@/components/app/robotics-module-page";
+import { RoboticsSimpleModulePage } from "@/components/app/robotics-simple-module-page";
 
 export default function FeedbackPage({ searchParams }: { searchParams: Promise<{ error?: string; q?: string; status?: string; group?: string; mentor?: string }> }) {
-  return <RoboticsModulePage moduleKey="feedback" searchParams={searchParams} />;
+  return <RoboticsSimpleModulePage moduleKey="feedback" searchParams={searchParams} />;
 }

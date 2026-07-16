@@ -1,6 +1,5 @@
-import { RoboticsModulePage } from "@/components/app/robotics-module-page";
+import { RoboticsSimpleModulePage } from "@/components/app/robotics-simple-module-page";
 
 export default function SalariesPage({ searchParams }: { searchParams: Promise<{ error?: string; q?: string; status?: string; group?: string }> }) {
-  return <RoboticsModulePage moduleKey="salaries" searchParams={searchParams} />;
+  return <RoboticsSimpleModulePage moduleKey="salaries" searchParams={searchParams} />;
 }
-
