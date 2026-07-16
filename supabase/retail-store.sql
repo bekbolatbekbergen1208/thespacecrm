@@ -127,4 +127,19 @@ on public.retail_debts
 for delete
 using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 
+create index if not exists retail_products_company_status_created_idx
+on public.retail_products (company_id, status, created_at desc);
+
+create index if not exists retail_products_company_name_idx
+on public.retail_products (company_id, name);
+
+create index if not exists retail_product_sales_company_date_idx
+on public.retail_product_sales (company_id, sale_date desc);
+
+create index if not exists retail_product_sales_company_product_idx
+on public.retail_product_sales (company_id, product_id);
+
+create index if not exists retail_debts_company_status_created_idx
+on public.retail_debts (company_id, status, created_at desc);
+
 notify pgrst, 'reload schema';

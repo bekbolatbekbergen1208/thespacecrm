@@ -79,14 +79,17 @@ export async function RetailDashboardContent({
     },
   };
 
-  const productColumns = "id,company_id,created_at,name,category,address,photo_url,photo_keywords,notes,purchase_price,sale_price,initial_quantity,status";
+  const productColumns = retailProductColumns(section);
   const saleColumns = "id,company_id,product_id,sale_date,quantity,payment_method,total_amount,profit_amount,customer_name,notes";
   const debtColumns = "id,company_id,product_id,customer_name,phone,amount,due_date,status,notes,last_reminded_at,paid_at,created_at";
+  const calendarOnly = showCalendar && !showProducts && !showReports && !showAssistant;
 
   const [{ data: products, error: productsError }, { data: sales, error: salesError }, { data: debts, error: debtsError }] = await Promise.all([
     supabase.from("retail_products").select(productColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
     shouldFetchSales
-      ? supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000)
+      ? calendarOnly
+        ? supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId).eq("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(300)
+        : supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [], error: null }),
     shouldFetchDebts
       ? supabase.from("retail_debts").select(debtColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
@@ -100,33 +103,42 @@ export async function RetailDashboardContent({
   const allProducts = (products ?? []) as RetailRow[];
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
   const archivedProducts = allProducts.filter((product) => product.status === "archived");
-  const productRows = activeProducts.filter((product) => {
-    const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
-    return !query || text.includes(query);
-  });
-  const summaries = productRows.map((product) => summarizeProduct(product, saleRows));
-  const daySales = saleRows.filter((sale) => sale.sale_date === selectedDate);
-  const dayReturns = daySales.filter((sale) => Number(sale.quantity ?? 0) < 0);
-  const dayReport = sumSales(daySales);
-  const totalReport = sumSales(saleRows);
+  const needsProductRows = showProducts || showReports || showAssistant;
+  const productRows = needsProductRows
+    ? activeProducts.filter((product) => {
+        const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
+        return !query || text.includes(query);
+      })
+    : activeProducts;
+  const needsSummaries = showProducts || showReports || showAssistant;
+  const summaries = needsSummaries ? productRows.map((product) => summarizeProduct(product, saleRows)) : [];
+  const needsDaySales = showCalendar || showReports || showAssistant;
+  const daySales = needsDaySales ? saleRows.filter((sale) => sale.sale_date === selectedDate) : [];
+  const dayReturns = showAssistant ? daySales.filter((sale) => Number(sale.quantity ?? 0) < 0) : [];
+  const dayReport = needsDaySales ? sumSales(daySales) : emptySalesReport();
+  const totalReport = showReports || showAssistant ? sumSales(saleRows) : emptySalesReport();
   const csvHref = `/dashboard/retail/export?date=${encodeURIComponent(selectedDate)}`;
-  const last7Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 6) && sale.sale_date <= selectedDate);
-  const last30Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 29) && sale.sale_date <= selectedDate);
-  const last7Report = sumSales(last7Sales);
-  const last30Report = sumSales(last30Sales);
-  const paymentSplit = groupSalesByPayment(last30Sales);
-  const topProducts = summaries
-    .filter((item) => item.sold > 0)
-    .sort((a, b) => b.sold - a.sold || b.profit - a.profit)
-    .slice(0, 5);
-  const lowStockProducts = summaries
-    .filter((item) => item.remaining <= 3)
-    .sort((a, b) => a.remaining - b.remaining)
-    .slice(0, 6);
-  const inventoryCost = summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.purchase_price ?? 0), 0);
-  const margin = totalReport.revenue ? Math.round((totalReport.profit / totalReport.revenue) * 100) : 0;
-  const dailyTrend = lastSevenDays(selectedDate).map((date) => ({ date, ...sumSales(saleRows.filter((sale) => sale.sale_date === date)) }));
-  const addressReports = groupRetailByAddress(activeProducts, saleRows);
+  const last7Sales = showReports ? saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 6) && sale.sale_date <= selectedDate) : [];
+  const last30Sales = showReports ? saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 29) && sale.sale_date <= selectedDate) : [];
+  const last7Report = showReports ? sumSales(last7Sales) : emptySalesReport();
+  const last30Report = showReports ? sumSales(last30Sales) : emptySalesReport();
+  const paymentSplit = showReports ? groupSalesByPayment(last30Sales) : [];
+  const topProducts = showReports
+    ? summaries
+        .filter((item) => item.sold > 0)
+        .sort((a, b) => b.sold - a.sold || b.profit - a.profit)
+        .slice(0, 5)
+    : [];
+  const lowStockProducts = showReports
+    ? summaries
+        .filter((item) => item.remaining <= 3)
+        .sort((a, b) => a.remaining - b.remaining)
+        .slice(0, 6)
+    : [];
+  const inventoryCost = showReports ? summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.purchase_price ?? 0), 0) : 0;
+  const margin = showReports && totalReport.revenue ? Math.round((totalReport.profit / totalReport.revenue) * 100) : 0;
+  const dailyTrend = showReports ? lastSevenDays(selectedDate).map((date) => ({ date, ...sumSales(saleRows.filter((sale) => sale.sale_date === date)) })) : [];
+  const addressReports = showReports ? groupRetailByAddress(activeProducts, saleRows) : [];
   const aiQuestion = params.aiq ?? "";
   const assistantAnswer = aiQuestion
     ? answerRetailQuestion({ question: aiQuestion, selectedDate, products: activeProducts, archivedProducts, sales: saleRows, daySales, summaries, dayReport, totalReport })
@@ -1043,6 +1055,24 @@ function summarizeProduct(product: RetailRow, sales: RetailRow[]) {
   const profit = productSales.reduce((sum, sale) => sum + Number(sale.profit_amount ?? 0), 0);
   const remaining = Number(product.initial_quantity ?? 0) - sold;
   return { product, sold, remaining, profit };
+}
+
+function retailProductColumns(section: RetailSection) {
+  const minimal = "id,company_id,created_at,initial_quantity,status";
+  const namesOnly = "id,company_id,created_at,name,status";
+  const trash = "id,company_id,created_at,name,category,address,photo_url,status";
+  const calendar = "id,company_id,created_at,name,status";
+  const full = "id,company_id,created_at,name,category,address,photo_url,photo_keywords,notes,purchase_price,sale_price,initial_quantity,status";
+
+  if (section === "overview") return minimal;
+  if (section === "debts") return namesOnly;
+  if (section === "trash") return trash;
+  if (section === "calendar") return calendar;
+  return full;
+}
+
+function emptySalesReport() {
+  return { quantity: 0, revenue: 0, profit: 0 };
 }
 
 function sumSales(sales: RetailRow[]) {
