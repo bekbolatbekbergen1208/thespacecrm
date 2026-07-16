@@ -22,7 +22,16 @@ type RetailRow = {
   [key: string]: string | number | null | undefined;
 };
 
-export type RetailSearchParams = { error?: string; q?: string; date?: string; saved?: string; aiq?: string };
+export type RetailSearchParams = {
+  error?: string;
+  q?: string;
+  category?: string;
+  address?: string;
+  photo?: string;
+  date?: string;
+  saved?: string;
+  aiq?: string;
+};
 export type RetailSection = "overview" | "products" | "calendar" | "reports" | "debts" | "trash" | "assistant";
 
 export async function RetailDashboardContent({
@@ -38,6 +47,9 @@ export async function RetailDashboardContent({
   const today = new Date().toISOString().slice(0, 10);
   const selectedDate = params.date || today;
   const query = (params.q ?? "").toLowerCase();
+  const categoryQuery = (params.category ?? "").toLowerCase();
+  const addressQuery = (params.address ?? "").toLowerCase();
+  const photoQuery = (params.photo ?? "").toLowerCase();
   const sectionPath = retailSectionPath(section);
   const showOverview = section === "overview";
   const showProducts = section === "products";
@@ -107,7 +119,13 @@ export async function RetailDashboardContent({
   const productRows = needsProductRows
     ? activeProducts.filter((product) => {
         const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
-        return !query || text.includes(query);
+        const categoryText = String(product.category ?? "").toLowerCase();
+        const addressText = String(product.address ?? "").toLowerCase();
+        const photoText = [product.photo_keywords, product.photo_url].join(" ").toLowerCase();
+        return (!query || text.includes(query))
+          && (!categoryQuery || categoryText.includes(categoryQuery))
+          && (!addressQuery || addressText.includes(addressQuery))
+          && (!photoQuery || photoText.includes(photoQuery));
       })
     : activeProducts;
   const needsSummaries = showProducts || showReports || showAssistant;
@@ -196,22 +214,62 @@ export async function RetailDashboardContent({
 
       {!showOverview && (
       <Card className="mb-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_240px_180px_180px]">
-          <form action={sectionPath} className="relative">
+        <form action={sectionPath} className="grid gap-3 xl:grid-cols-[1.1fr_0.8fr_0.9fr_0.9fr_220px_auto_auto]">
+          <label className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               name="q"
               defaultValue={params.q ?? ""}
-              placeholder="Поиск по названию, категории, фото-ключам..."
+              placeholder="Название, заметки, общий поиск..."
               className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500"
             />
-            <input type="hidden" name="date" value={selectedDate} />
-          </form>
-          <form action={sectionPath} className="relative">
+          </label>
+          <label className="relative">
+            <ShoppingCart className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input
+              name="category"
+              defaultValue={params.category ?? ""}
+              placeholder="Категория"
+              className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500"
+            />
+          </label>
+          <label className="relative">
+            <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input
+              name="address"
+              defaultValue={params.address ?? ""}
+              placeholder="Адрес"
+              className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500"
+            />
+          </label>
+          <label className="relative">
+            <ImageIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input
+              name="photo"
+              defaultValue={params.photo ?? ""}
+              placeholder="Фото URL / ключ"
+              className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500"
+            />
+          </label>
+          <label className="relative">
             <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input type="date" name="date" defaultValue={selectedDate} className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none" />
-            {params.q && <input type="hidden" name="q" value={params.q} />}
-          </form>
+          </label>
+          <button className="premium-button h-12 justify-center bg-white px-4 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+            <Search className="h-4 w-4" />
+            Найти
+          </button>
+          <a href={sectionPath} className="premium-button h-12 justify-center border border-white/10 bg-white/[0.045] px-4 text-sm text-slate-200 hover:bg-white/[0.08]">
+            Сброс
+          </a>
+        </form>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_1fr_auto_auto]">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 text-xs leading-5 text-slate-400">
+            <b className="text-cyan-100">Фото-поиск:</b> ищет по полям “Фото URL” и “Фото-поиск / ключи”.
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 text-xs leading-5 text-slate-400">
+            <b className="text-cyan-100">Адрес + категория:</b> можно комбинировать фильтры вместе.
+          </div>
           <a href={csvHref} download={`retail-profit-report-${selectedDate}.csv`} className="premium-button h-12 justify-center bg-white px-4 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
             <Download className="h-4 w-4" />
             CSV за день
