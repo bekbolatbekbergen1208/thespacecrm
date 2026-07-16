@@ -1,27 +1,16 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
-import { canManage, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { dashboardRouteForStoredIndustry } from "@/lib/industry-dashboard";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import type { Role } from "@/lib/supabase/types";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [{ membership, supabase }, dictionary, locale] = await Promise.all([requireUser(), getServerDictionary(), getServerLocale()]);
+  const [{ membership }, dictionary, locale] = await Promise.all([requireUser(), getServerDictionary(), getServerLocale()]);
   if (!membership) redirect("/onboarding");
 
   const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
   const dashboardRoute = membership.dashboard_route || company?.dashboard_route || dashboardRouteForStoredIndustry(company?.business_type);
-  let pendingAccessCount = 0;
-
-  if (canManage(membership.role)) {
-    const pendingQuery = supabase
-      .from("employee_access_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending")
-      .eq("company_id", membership.company_id);
-    const { count } = await pendingQuery;
-    pendingAccessCount = count ?? 0;
-  }
 
   return (
     <AppShell
@@ -34,8 +23,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       dashboardRoute={dashboardRoute}
       dictionary={dictionary}
       locale={locale}
-      pendingAccessCount={pendingAccessCount}
-      notificationCount={pendingAccessCount}
     >
       {children}
     </AppShell>
