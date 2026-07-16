@@ -97,10 +97,10 @@ export async function RetailDashboardContent({
   ]);
   const schemaError = [productsError, salesError, debtsError].find((error) => error?.message?.toLowerCase().includes("schema cache") || error?.message?.toLowerCase().includes("retail_products") || error?.message?.toLowerCase().includes("retail_debts"));
 
-  const saleRows = (sales ?? []) as RetailRow[];
-  const debtRows = (debts ?? []) as RetailRow[];
+  const saleRows = (sales ?? []) as unknown as RetailRow[];
+  const debtRows = (debts ?? []) as unknown as RetailRow[];
   const openDebts = debtRows.filter((debt) => debt.status !== "paid");
-  const allProducts = (products ?? []) as RetailRow[];
+  const allProducts = (products ?? []) as unknown as RetailRow[];
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
   const archivedProducts = allProducts.filter((product) => product.status === "archived");
   const needsProductRows = showProducts || showReports || showAssistant;
