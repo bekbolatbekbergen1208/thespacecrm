@@ -18,8 +18,8 @@ import { ArchiveRestore, BarChart3, Bell, Bot, CalendarDays, CheckCircle2, Chevr
 type RetailRow = {
   id: string;
   company_id: string;
-  created_at: string;
-  [key: string]: string | number | null;
+  created_at?: string;
+  [key: string]: string | number | null | undefined;
 };
 
 export type RetailSearchParams = { error?: string; q?: string; date?: string; saved?: string; aiq?: string };
@@ -97,8 +97,6 @@ export async function RetailDashboardContent({
   const saleRows = (sales ?? []) as RetailRow[];
   const debtRows = (debts ?? []) as RetailRow[];
   const openDebts = debtRows.filter((debt) => debt.status !== "paid");
-  const dueDebts = openDebts.filter(isDebtReminderDue);
-  const debtTotal = openDebts.reduce((sum, debt) => sum + Number(debt.amount ?? 0), 0);
   const allProducts = (products ?? []) as RetailRow[];
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
   const archivedProducts = allProducts.filter((product) => product.status === "archived");
@@ -111,7 +109,6 @@ export async function RetailDashboardContent({
   const dayReturns = daySales.filter((sale) => Number(sale.quantity ?? 0) < 0);
   const dayReport = sumSales(daySales);
   const totalReport = sumSales(saleRows);
-  const totalRemaining = activeProducts.reduce((sum, product) => sum + summarizeProduct(product, saleRows).remaining, 0);
   const csvHref = `/dashboard/retail/export?date=${encodeURIComponent(selectedDate)}`;
   const last7Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 6) && sale.sale_date <= selectedDate);
   const last30Sales = saleRows.filter((sale) => sale.sale_date && sale.sale_date >= dateMinus(selectedDate, 29) && sale.sale_date <= selectedDate);
