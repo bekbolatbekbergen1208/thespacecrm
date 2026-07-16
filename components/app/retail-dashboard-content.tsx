@@ -40,12 +40,12 @@ export async function RetailDashboardContent({
   const query = (params.q ?? "").toLowerCase();
   const sectionPath = retailSectionPath(section);
   const showOverview = section === "overview";
-  const showProducts = section === "overview" || section === "products";
-  const showCalendar = section === "overview" || section === "calendar";
-  const showReports = section === "overview" || section === "reports";
-  const showDebts = section === "overview" || section === "debts";
-  const showTrash = section === "overview" || section === "trash";
-  const showAssistant = section === "overview" || section === "assistant";
+  const showProducts = section === "products";
+  const showCalendar = section === "calendar";
+  const showReports = section === "reports";
+  const showDebts = section === "debts";
+  const showTrash = section === "trash";
+  const showAssistant = section === "assistant";
   const shouldFetchSales = showOverview || showProducts || showCalendar || showReports || showAssistant;
   const shouldFetchDebts = showOverview || showDebts;
   const pageTitles: Record<RetailSection, { title: string; description: string }> = {
@@ -179,6 +179,9 @@ export async function RetailDashboardContent({
         </CollapsibleSection>
       )}
 
+      {showOverview && <RetailQuickLinks />}
+
+      {!showOverview && (
       <Card className="mb-5">
         <div className="grid gap-3 lg:grid-cols-[1fr_240px_180px_180px]">
           <form action={sectionPath} className="relative">
@@ -206,6 +209,7 @@ export async function RetailDashboardContent({
           </a>
         </div>
       </Card>
+      )}
 
       {showAssistant && (
         <CollapsibleSection
@@ -688,6 +692,66 @@ function RetailReportsSection({
         </ReportList>
       </div>
     </Card>
+  );
+}
+
+function RetailQuickLinks() {
+  const links = [
+    {
+      title: "Товары и продажи",
+      href: "/dashboard/retail/products",
+      description: "Добавить товар, продать, вернуть, записать долг.",
+      icon: <ShoppingCart className="h-5 w-5" />,
+    },
+    {
+      title: "Календарь",
+      href: "/dashboard/retail/calendar",
+      description: "Продажи, выручка и прибыль за выбранный день.",
+      icon: <CalendarDays className="h-5 w-5" />,
+    },
+    {
+      title: "Отчёты",
+      href: "/dashboard/retail/reports",
+      description: "День, 7 дней, 30 дней, адреса, остатки и CSV.",
+      icon: <PieChart className="h-5 w-5" />,
+    },
+    {
+      title: "Долги",
+      href: "/dashboard/retail/debts",
+      description: "WhatsApp номера, суммы и напоминания.",
+      icon: <Bell className="h-5 w-5" />,
+    },
+    {
+      title: "AI ассистент",
+      href: "/dashboard/retail/assistant",
+      description: "Вопросы по товарам, остаткам и прибыли.",
+      icon: <Bot className="h-5 w-5" />,
+    },
+    {
+      title: "Мусор",
+      href: "/dashboard/retail/trash",
+      description: "Восстановить или удалить товары окончательно.",
+      icon: <Trash2 className="h-5 w-5" />,
+    },
+  ];
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {links.map((link) => (
+        <a
+          key={link.href}
+          href={link.href}
+          className="group rounded-[28px] border border-white/10 bg-white/[0.035] p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-300/[0.06]"
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100 transition group-hover:scale-105">
+            {link.icon}
+          </span>
+          <h2 className="mt-4 text-xl font-black text-white">{link.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">{link.description}</p>
+          <span className="mt-4 inline-flex text-sm font-black text-cyan-100">Открыть страницу</span>
+        </a>
+      ))}
+    </div>
   );
 }
 
