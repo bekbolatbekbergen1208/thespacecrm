@@ -1,4 +1,3 @@
-import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { translateLiteral, type getDictionary, type Locale } from "@/lib/i18n";
 import type { RoboticsField, RoboticsModuleKey } from "@/lib/robotics-crm";
 import { Check, ChevronDown, FileText, Save, Type } from "lucide-react";
@@ -57,13 +56,20 @@ function RoboticsFieldControl({
 }) {
   if (field.name === "photo_url") {
     return (
-      <div className="md:col-span-2">
-        <CameraPhotoField
+      <label className="group block md:col-span-2">
+        <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500 transition group-focus-within:text-cyan-100">
+          <Type className="h-3.5 w-3.5" />
+          {translateLiteral(locale, field.label)}
+          {field.required === false && <span className="font-semibold normal-case tracking-normal text-slate-600">{dictionary.optional}</span>}
+        </span>
+        <input
           name={field.name}
-          label={translateLiteral(locale, field.label).replace(" URL", "")}
+          type="url"
           defaultValue={defaultValue}
+          placeholder="https://..."
+          className="premium-input h-12 w-full px-4 text-sm text-white outline-none placeholder:text-slate-600"
         />
-      </div>
+      </label>
     );
   }
 

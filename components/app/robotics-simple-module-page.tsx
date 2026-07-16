@@ -1,6 +1,5 @@
 import { deleteRoboticsRecord, saveRoboticsRecord } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
-import { RoboticsExportButtons } from "@/components/app/robotics-export-buttons";
 import { RoboticsRecordForm } from "@/components/app/robotics-record-form";
 import { SmallButton } from "@/components/app/forms";
 import { requireUser } from "@/lib/auth";
@@ -78,7 +77,6 @@ export async function RoboticsSimpleModulePage({
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">{t.fastInput}</p>
             <h2 className="mt-1 text-xl font-black tracking-tight">{t.addRecord}</h2>
           </div>
-          <RoboticsExportButtons title={translateLiteral(locale, crmModule.title)} rows={filtered} />
         </div>
         <RoboticsRecordForm moduleKey={crmModule.key} fields={formFields} action={saveRoboticsRecord} dictionary={t} locale={locale} />
       </Card>
