@@ -1186,6 +1186,12 @@ export async function saveRoboticsRecord(formData: FormData) {
   for (const field of crmModule.fields) {
     payload[field.name] = roboticsValue(formData, field.name, field.type);
   }
+  if (moduleKey === "groups") {
+    payload.skip_holidays = payload.skip_holidays || "no";
+    payload.status = payload.status || "active";
+    payload.schedule = payload.schedule || "";
+    payload.max_students = Number(payload.max_students ?? 0) || 12;
+  }
 
   const result = id
     ? await supabase.from(crmModule.table).update(payload).eq("id", id).eq("company_id", companyId)
