@@ -96,30 +96,69 @@ export async function RoboticsModulePage({
     return String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? ""), undefined, { numeric: true }) * direction;
   });
 
+  const fieldNames = new Set(crmModule.fields.map((field) => field.name));
+  const needsGroupsPanel = moduleKey === "groups";
+  const needsCalendarPanel = moduleKey === "schedule";
+  const needsAttendancePanel = moduleKey === "attendance";
+  const needsPaymentsPanel = moduleKey === "payments";
+  const needsStudents = needsGroupsPanel || needsCalendarPanel || needsAttendancePanel || needsPaymentsPanel || fieldNames.has("student_name");
+  const needsGroups = needsGroupsPanel || needsCalendarPanel || fieldNames.has("group_name");
+  const needsMentors = needsGroupsPanel || needsCalendarPanel || fieldNames.has("mentor_name") || fieldNames.has("assignee") || fieldNames.has("responsible");
+  const needsEmployees = needsGroupsPanel || needsMentors;
+  const emptyResult = Promise.resolve({ data: [], error: null });
+
   const [studentsResult, groupsResult, mentorsResult, employeesResult, lessonsResult, paymentsResult, attendanceResult, subscriptionsResult] = await Promise.all([
-    supabase.from("robotics_students").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
-    supabase.from("robotics_groups").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
-    supabase.from("robotics_mentors").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
-    supabase.from("employees").select("*").eq("company_id", companyId).order("name", { ascending: true }),
-    moduleKey === "groups"
+    needsStudents && moduleKey !== "students"
+      ? supabase
+        .from("robotics_students")
+        .select("id, first_name, last_name, parent_name, parent_phone, whatsapp, group_name, mentor_name, status, created_at, company_id")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(500)
+      : emptyResult,
+    needsGroups && moduleKey !== "groups"
+      ? supabase
+        .from("robotics_groups")
+        .select("id, name, course, level, mentor_name, room, start_time, end_time, max_students, status, created_at, company_id")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(300)
+      : emptyResult,
+    needsMentors && moduleKey !== "mentors"
+      ? supabase
+        .from("robotics_mentors")
+        .select("id, name, phone, position, groups, created_at, company_id")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(200)
+      : emptyResult,
+    needsEmployees
+      ? supabase
+        .from("employees")
+        .select("id, name, position, phone, email, company_id")
+        .eq("company_id", companyId)
+        .order("name", { ascending: true })
+        .limit(200)
+      : emptyResult,
+    needsGroupsPanel
       ? supabase.from("robotics_lessons").select("*").eq("company_id", companyId).order("lesson_date", { ascending: false }).limit(300)
-      : Promise.resolve({ data: [], error: null }),
-    moduleKey === "groups" || moduleKey === "attendance" || moduleKey === "payments"
+      : emptyResult,
+    needsGroupsPanel || needsAttendancePanel || needsPaymentsPanel
       ? supabase.from("robotics_payments").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(300)
-      : Promise.resolve({ data: [], error: null }),
-    moduleKey === "groups" || moduleKey === "schedule" || moduleKey === "attendance"
+      : emptyResult,
+    needsGroupsPanel || needsCalendarPanel || needsAttendancePanel
       ? supabase.from("robotics_attendance").select("*").eq("company_id", companyId).order("lesson_date", { ascending: false }).limit(500)
-      : Promise.resolve({ data: [], error: null }),
-    moduleKey === "attendance" || moduleKey === "payments"
+      : emptyResult,
+    needsAttendancePanel || needsPaymentsPanel
       ? supabase.from("robotics_subscriptions").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(300)
-      : Promise.resolve({ data: [], error: null }),
+      : emptyResult,
   ]);
-  const students = (studentsResult.data ?? []) as RoboticsRow[];
-  const groups = (groupsResult.data ?? []) as RoboticsRow[];
-  const mentors = (mentorsResult.data ?? []) as RoboticsRow[];
+  const students = moduleKey === "students" ? rows : (studentsResult.data ?? []) as RoboticsRow[];
+  const groups = moduleKey === "groups" ? rows : (groupsResult.data ?? []) as RoboticsRow[];
+  const mentors = moduleKey === "mentors" ? rows : (mentorsResult.data ?? []) as RoboticsRow[];
   const employees = (employeesResult.data ?? []) as RoboticsRow[];
   const lessons = moduleKey === "schedule" ? filtered : (lessonsResult.data ?? []) as RoboticsRow[];
-  const payments = (paymentsResult.data ?? []) as RoboticsRow[];
+  const payments = moduleKey === "payments" ? rows : (paymentsResult.data ?? []) as RoboticsRow[];
   const attendance = (attendanceResult.data ?? []) as RoboticsRow[];
   const subscriptions = (subscriptionsResult.data ?? []) as RoboticsRow[];
   const formFields = withDirectoryOptions(crmModule.fields, { students, groups, mentors, employees });
