@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
@@ -81,11 +80,7 @@ export function NavLink({ label, href, iconKey, badge }: { label: string; href: 
       }`}
     >
       {isActive && (
-        <motion.span
-          layoutId="active-nav-pill"
-          className="absolute inset-0 rounded-2xl border border-cyan-300/[0.18] bg-white/[0.075] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-          transition={{ type: "spring", stiffness: 430, damping: 34 }}
-        />
+        <span className="absolute inset-0 rounded-2xl border border-cyan-300/[0.18] bg-white/[0.075] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" />
       )}
       <span
         className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-xl border transition ${

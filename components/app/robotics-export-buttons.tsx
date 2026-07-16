@@ -1,10 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
-import jsPDF from "jspdf";
 import { FileDown, QrCode, Sheet } from "lucide-react";
-import QRCode from "qrcode";
-import * as XLSX from "xlsx";
 
 export function RoboticsExportButtons({
   title,
@@ -14,6 +10,10 @@ export function RoboticsExportButtons({
   rows: Record<string, unknown>[];
 }) {
   async function exportPdf() {
+    const [{ default: jsPDF }, QRCode] = await Promise.all([
+      import("jspdf"),
+      import("qrcode"),
+    ]);
     const doc = new jsPDF();
     doc.text("CRM.Space Robotics Education", 14, 14);
     doc.text(title, 14, 24);
@@ -25,7 +25,8 @@ export function RoboticsExportButtons({
     doc.save(`${title}.pdf`);
   }
 
-  function exportExcel() {
+  async function exportExcel() {
+    const XLSX = await import("xlsx");
     const sheet = XLSX.utils.json_to_sheet(rows);
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, title.slice(0, 28));
@@ -33,6 +34,7 @@ export function RoboticsExportButtons({
   }
 
   async function printQr() {
+    const QRCode = await import("qrcode");
     const qr = await QRCode.toDataURL(window.location.href);
     const image = new Image();
     image.src = qr;
@@ -51,15 +53,13 @@ export function RoboticsExportButtons({
 
 function ExportButton({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onClick}
-      className="premium-button h-9 border border-white/10 bg-white/[0.045] px-4 text-xs text-slate-200 hover:bg-white/[0.08]"
-      whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.97 }}
+      className="premium-button h-9 border border-white/10 bg-white/[0.045] px-4 text-xs text-slate-200 transition hover:-translate-y-0.5 hover:bg-white/[0.08] active:scale-[0.98]"
     >
       {icon}
       {label}
-    </motion.button>
+    </button>
   );
 }
