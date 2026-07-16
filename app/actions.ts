@@ -746,7 +746,7 @@ export async function markBakeryProductSold(formData: FormData) {
 
 export async function saveRetailProduct(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может добавлять товары")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/products?error=${encodeURIComponent("Только founder/admin/manager может добавлять товары")}`);
 
   const id = value(formData, "id");
   const payload = {
@@ -766,18 +766,19 @@ export async function saveRetailProduct(formData: FormData) {
     ? await supabase.from("retail_products").update(payload).eq("id", id).eq("company_id", companyId)
     : await supabase.from("retail_products").insert({ ...payload, company_id: companyId });
 
-  if (result.error) redirect(`/dashboard/retail?error=${encodeURIComponent(result.error.message)}`);
+  if (result.error) redirect(`/dashboard/retail/products?error=${encodeURIComponent(result.error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect("/dashboard/retail?saved=product");
+  revalidatePath("/dashboard/retail/products");
+  redirect("/dashboard/retail/products?saved=product");
 }
 
 export async function deleteRetailProduct(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может удалять товары")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/products?error=${encodeURIComponent("Только founder/admin/manager может удалять товары")}`);
 
   const productId = z.string().uuid().parse(value(formData, "productId"));
   const selectedDate = value(formData, "selectedDate");
-  const redirectPath = selectedDate ? `/dashboard/retail?date=${encodeURIComponent(selectedDate)}` : "/dashboard/retail";
+  const redirectPath = selectedDate ? `/dashboard/retail/products?date=${encodeURIComponent(selectedDate)}` : "/dashboard/retail/products";
   const joiner = redirectPath.includes("?") ? "&" : "?";
 
   const { error } = await supabase
@@ -788,12 +789,14 @@ export async function deleteRetailProduct(formData: FormData) {
 
   if (error) redirect(`${redirectPath}${joiner}error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
+  revalidatePath("/dashboard/retail/products");
+  revalidatePath("/dashboard/retail/trash");
   redirect(`${redirectPath}${joiner}saved=deleted`);
 }
 
 export async function restoreRetailProduct(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может восстановить товары")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/trash?error=${encodeURIComponent("Только founder/admin/manager может восстановить товары")}`);
 
   const productId = z.string().uuid().parse(value(formData, "productId"));
   const { error } = await supabase
@@ -802,24 +805,27 @@ export async function restoreRetailProduct(formData: FormData) {
     .eq("id", productId)
     .eq("company_id", companyId);
 
-  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/trash?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect("/dashboard/retail?saved=restored");
+  revalidatePath("/dashboard/retail/products");
+  revalidatePath("/dashboard/retail/trash");
+  redirect("/dashboard/retail/trash?saved=restored");
 }
 
 export async function permanentlyDeleteRetailProduct(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может окончательно удалять товары")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/trash?error=${encodeURIComponent("Только founder/admin/manager может окончательно удалять товары")}`);
 
   const productId = z.string().uuid().parse(value(formData, "productId"));
   const { error: salesError } = await supabase.from("retail_product_sales").delete().eq("product_id", productId).eq("company_id", companyId);
-  if (salesError) redirect(`/dashboard/retail?error=${encodeURIComponent(salesError.message)}`);
+  if (salesError) redirect(`/dashboard/retail/trash?error=${encodeURIComponent(salesError.message)}`);
 
   const { error } = await supabase.from("retail_products").delete().eq("id", productId).eq("company_id", companyId);
-  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/trash?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath("/dashboard/retail");
-  redirect("/dashboard/retail?saved=purged");
+  revalidatePath("/dashboard/retail/trash");
+  redirect("/dashboard/retail/trash?saved=purged");
 }
 
 export async function markRetailProductSold(formData: FormData) {
@@ -836,7 +842,7 @@ export async function markRetailProductSold(formData: FormData) {
     .maybeSingle();
 
   if (productError || !product) {
-    redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
+    redirect(`/dashboard/retail/products?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
   }
 
   const salePrice = Math.max(0, numberValue(formData, "salePrice") || Number(product.sale_price ?? 0));
@@ -845,7 +851,7 @@ export async function markRetailProductSold(formData: FormData) {
   const profitAmount = (salePrice - purchasePrice) * quantity;
 
   if (salePrice <= 0) {
-    redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent("Введите цену продажи")}`);
+    redirect(`/dashboard/retail/products?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent("Введите цену продажи")}`);
   }
 
   const { error } = await supabase.from("retail_product_sales").insert({
@@ -860,9 +866,12 @@ export async function markRetailProductSold(formData: FormData) {
     notes: value(formData, "notes") || null,
   });
 
-  if (error) redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/products?date=${encodeURIComponent(saleDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect(`/dashboard/retail?date=${encodeURIComponent(saleDate)}&saved=sale`);
+  revalidatePath("/dashboard/retail/products");
+  revalidatePath("/dashboard/retail/calendar");
+  revalidatePath("/dashboard/retail/reports");
+  redirect(`/dashboard/retail/products?date=${encodeURIComponent(saleDate)}&saved=sale`);
 }
 
 export async function returnRetailProduct(formData: FormData) {
@@ -879,14 +888,14 @@ export async function returnRetailProduct(formData: FormData) {
     .maybeSingle();
 
   if (productError || !product) {
-    redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
+    redirect(`/dashboard/retail/products?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent(productError?.message || "Товар не найден")}`);
   }
 
   const salePrice = Math.max(0, numberValue(formData, "returnPrice") || Number(product.sale_price ?? 0));
   const purchasePrice = Number(product.purchase_price ?? 0);
 
   if (salePrice <= 0) {
-    redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent("Введите сумму возврата")}`);
+    redirect(`/dashboard/retail/products?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent("Введите сумму возврата")}`);
   }
 
   const { error } = await supabase.from("retail_product_sales").insert({
@@ -901,19 +910,22 @@ export async function returnRetailProduct(formData: FormData) {
     notes: value(formData, "notes") || "Возврат товара",
   });
 
-  if (error) redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/products?date=${encodeURIComponent(returnDate)}&error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect(`/dashboard/retail?date=${encodeURIComponent(returnDate)}&saved=return`);
+  revalidatePath("/dashboard/retail/products");
+  revalidatePath("/dashboard/retail/calendar");
+  revalidatePath("/dashboard/retail/reports");
+  redirect(`/dashboard/retail/products?date=${encodeURIComponent(returnDate)}&saved=return`);
 }
 
 export async function saveRetailDebt(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может добавлять долги")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/debts?error=${encodeURIComponent("Только founder/admin/manager может добавлять долги")}`);
 
   const dueDate = value(formData, "dueDate") || new Date().toISOString().slice(0, 10);
   const amount = Math.max(0, numberValue(formData, "amount"));
   if (amount <= 0) {
-    redirect(`/dashboard/retail?error=${encodeURIComponent("Введите сумму долга")}`);
+    redirect(`/dashboard/retail/debts?error=${encodeURIComponent("Введите сумму долга")}`);
   }
 
   const { error } = await supabase.from("retail_debts").insert({
@@ -927,14 +939,15 @@ export async function saveRetailDebt(formData: FormData) {
     notes: value(formData, "notes") || null,
   });
 
-  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/debts?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect("/dashboard/retail?saved=debt");
+  revalidatePath("/dashboard/retail/debts");
+  redirect("/dashboard/retail/debts?saved=debt");
 }
 
 export async function markRetailDebtPaid(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может закрывать долги")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/debts?error=${encodeURIComponent("Только founder/admin/manager может закрывать долги")}`);
 
   const debtId = z.string().uuid().parse(value(formData, "debtId"));
   const { error } = await supabase
@@ -943,14 +956,15 @@ export async function markRetailDebtPaid(formData: FormData) {
     .eq("id", debtId)
     .eq("company_id", companyId);
 
-  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/debts?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect("/dashboard/retail?saved=debt-paid");
+  revalidatePath("/dashboard/retail/debts");
+  redirect("/dashboard/retail/debts?saved=debt-paid");
 }
 
 export async function markRetailDebtReminderSent(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
-  if (!canManage(role)) redirect(`/dashboard/retail?error=${encodeURIComponent("Только founder/admin/manager может отмечать напоминания")}`);
+  if (!canManage(role)) redirect(`/dashboard/retail/debts?error=${encodeURIComponent("Только founder/admin/manager может отмечать напоминания")}`);
 
   const debtId = z.string().uuid().parse(value(formData, "debtId"));
   const { error } = await supabase
@@ -959,9 +973,10 @@ export async function markRetailDebtReminderSent(formData: FormData) {
     .eq("id", debtId)
     .eq("company_id", companyId);
 
-  if (error) redirect(`/dashboard/retail?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/retail/debts?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/retail");
-  redirect("/dashboard/retail?saved=debt-reminder");
+  revalidatePath("/dashboard/retail/debts");
+  redirect("/dashboard/retail/debts?saved=debt-reminder");
 }
 
 export async function saveBakerySale(formData: FormData) {
