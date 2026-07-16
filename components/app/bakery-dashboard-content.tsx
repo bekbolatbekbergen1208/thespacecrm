@@ -67,16 +67,46 @@ export async function BakeryDashboardContent({
   const query = (params.q ?? "").toLowerCase();
   const aiQuestion = (params.aiq ?? "").trim();
 
+  const needsAssistant = section === "overview" || section === "assistant";
+  const needsReports = section === "overview" || section === "reports" || section === "money";
+  const needsProducts = section === "products";
+  const needsShops = section === "shops" || section === "debts" || section === "delivery" || needsAssistant || needsReports;
+  const needsStock = section === "production" || section === "stock" || needsAssistant || needsReports;
+  const needsSales = section === "shops" || section === "debts" || needsAssistant || needsReports;
+  const needsSuppliers = section === "suppliers" || needsAssistant;
+  const needsExpenses = section === "expenses" || needsReports;
+  const needsProductSales = section === "products" || needsReports;
+  const needsDelivery = section === "delivery";
+  const emptyResult = Promise.resolve({ data: null });
+
   const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }, { data: products }, { data: productSales }, { data: vehicles }, { data: routes }] = await Promise.all([
-    supabase.from("bakery_shops").select("*").eq("company_id", companyId).order("created_at", { ascending: false }),
-    supabase.from("bakery_stock").select("*").eq("company_id", companyId).order("stock_date", { ascending: false }).limit(500),
-    supabase.from("bakery_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000),
-    supabase.from("bakery_suppliers").select("*").eq("company_id", companyId).order("last_supply_date", { ascending: false }).limit(200),
-    supabase.from("bakery_expenses").select("*").eq("company_id", companyId).order("expense_date", { ascending: false }).limit(1000),
-    supabase.from("bakery_products").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
-    supabase.from("bakery_product_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000),
-    supabase.from("bakery_vehicles").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(200),
-    supabase.from("bakery_delivery_routes").select("*").eq("company_id", companyId).order("route_date", { ascending: false }).limit(500),
+    needsShops
+      ? supabase.from("bakery_shops").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
+      : emptyResult,
+    needsStock
+      ? supabase.from("bakery_stock").select("*").eq("company_id", companyId).order("stock_date", { ascending: false }).limit(needsReports ? 120 : 500)
+      : emptyResult,
+    needsSales
+      ? supabase.from("bakery_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(section === "shops" || section === "debts" ? 1000 : 250)
+      : emptyResult,
+    needsSuppliers
+      ? supabase.from("bakery_suppliers").select("*").eq("company_id", companyId).order("last_supply_date", { ascending: false }).limit(200)
+      : emptyResult,
+    needsExpenses
+      ? supabase.from("bakery_expenses").select("*").eq("company_id", companyId).order("expense_date", { ascending: false }).limit(needsReports ? 250 : 1000)
+      : emptyResult,
+    needsProducts
+      ? supabase.from("bakery_products").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
+      : emptyResult,
+    needsProductSales
+      ? supabase.from("bakery_product_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(section === "products" ? 1000 : 250)
+      : emptyResult,
+    needsDelivery
+      ? supabase.from("bakery_vehicles").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(200)
+      : emptyResult,
+    needsDelivery
+      ? supabase.from("bakery_delivery_routes").select("*").eq("company_id", companyId).order("route_date", { ascending: false }).limit(500)
+      : emptyResult,
   ]);
 
   const shopRows = ((shops ?? []) as BakeryRow[]).filter((shop) => {

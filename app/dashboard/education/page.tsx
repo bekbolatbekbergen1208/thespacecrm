@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { seedRoboticsDemoData } from "@/app/actions";
 import { Card, PageHeader } from "@/components/app/app-shell";
-import { RoboticsCharts } from "@/components/app/robotics-charts";
+import { LazyRoboticsCharts } from "@/components/app/lazy-robotics-charts";
 import { requireUser } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
@@ -15,19 +15,26 @@ export default async function EducationDashboardPage({
 }) {
   const [{ supabase, membership }, params, t, locale] = await Promise.all([requireUser(), searchParams, getServerDictionary(), getServerLocale()]);
   const companyId = membership!.company_id;
+  const today = new Date().toISOString().slice(0, 10);
+  const month = today.slice(0, 7);
   const [students, groups, mentors, payments, attendance, lessons, trials] = await Promise.all([
-    supabase.from("robotics_students").select("id", { count: "exact" }).eq("company_id", companyId),
-    supabase.from("robotics_groups").select("id", { count: "exact" }).eq("company_id", companyId),
-    supabase.from("robotics_mentors").select("id", { count: "exact" }).eq("company_id", companyId),
-    supabase.from("robotics_payments").select("amount, status, paid_at").eq("company_id", companyId),
-    supabase.from("robotics_attendance").select("status").eq("company_id", companyId),
-    supabase.from("robotics_lessons").select("id, lesson_time, group_name, room, mentor_name, topic").eq("company_id", companyId).order("lesson_date").limit(5),
-    supabase.from("robotics_trial_lessons").select("id", { count: "exact" }).eq("company_id", companyId).eq("trial_date", new Date().toISOString().slice(0, 10)),
+    supabase.from("robotics_students").select("id", { count: "exact", head: true }).eq("company_id", companyId),
+    supabase.from("robotics_groups").select("id", { count: "exact", head: true }).eq("company_id", companyId),
+    supabase.from("robotics_mentors").select("id", { count: "exact", head: true }).eq("company_id", companyId),
+    supabase
+      .from("robotics_payments")
+      .select("amount, status, paid_at")
+      .eq("company_id", companyId)
+      .gte("paid_at", `${month}-01`)
+      .limit(500),
+    supabase.from("robotics_attendance").select("status").eq("company_id", companyId).order("lesson_date", { ascending: false }).limit(500),
+    supabase.from("robotics_lessons").select("id, lesson_time, group_name, room, mentor_name, topic").eq("company_id", companyId).gte("lesson_date", today).order("lesson_date").limit(5),
+    supabase.from("robotics_trial_lessons").select("id", { count: "exact", head: true }).eq("company_id", companyId).eq("trial_date", today),
   ]);
 
   const totalRevenue = payments.data?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
-  const monthRevenue = payments.data?.filter((payment) => String(payment.paid_at ?? "").startsWith(new Date().toISOString().slice(0, 7))).reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
-  const todayPayments = payments.data?.filter((payment) => payment.paid_at === new Date().toISOString().slice(0, 10)).length ?? 0;
+  const monthRevenue = totalRevenue;
+  const todayPayments = payments.data?.filter((payment) => payment.paid_at === today).length ?? 0;
   const debts = payments.data?.filter((payment) => payment.status !== "оплачено").length ?? 0;
   const attendanceRate = attendance.data?.length
     ? Math.round((attendance.data.filter((item) => item.status === "присутствовал").length / attendance.data.length) * 100)
@@ -122,7 +129,7 @@ export default async function EducationDashboardPage({
         ))}
       </div>
       <div className="mt-6">
-        <RoboticsCharts locale={locale} />
+        <LazyRoboticsCharts locale={locale} />
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {roboticsModuleList.filter((module) => module.key !== "settings").map((module) => (
