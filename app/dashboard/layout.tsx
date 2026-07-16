@@ -14,15 +14,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let pendingAccessCount = 0;
 
   if (canManage(membership.role)) {
-    const { data: accessRequests } = await supabase
+    const pendingQuery = supabase
       .from("employee_access_requests")
-      .select("id, company_id, company_name")
+      .select("id", { count: "exact", head: true })
       .eq("status", "pending")
-      .limit(100);
-    pendingAccessCount = accessRequests?.filter((request) => (
-      request.company_id === membership.company_id
-      || (!request.company_id && request.company_name.toLowerCase() === company?.name.toLowerCase())
-    )).length ?? 0;
+      .eq("company_id", membership.company_id);
+    const { count } = await pendingQuery;
+    pendingAccessCount = count ?? 0;
   }
 
   return (
