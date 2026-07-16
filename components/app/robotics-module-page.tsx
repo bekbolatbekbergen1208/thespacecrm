@@ -156,7 +156,7 @@ export async function RoboticsModulePage({
   const students = moduleKey === "students" ? rows : (studentsResult.data ?? []) as RoboticsRow[];
   const groups = moduleKey === "groups" ? rows : (groupsResult.data ?? []) as RoboticsRow[];
   const mentors = moduleKey === "mentors" ? rows : (mentorsResult.data ?? []) as RoboticsRow[];
-  const employees = (employeesResult.data ?? []) as RoboticsRow[];
+  const employees = (employeesResult.data ?? []) as unknown as RoboticsRow[];
   const lessons = moduleKey === "schedule" ? filtered : (lessonsResult.data ?? []) as RoboticsRow[];
   const payments = moduleKey === "payments" ? rows : (paymentsResult.data ?? []) as RoboticsRow[];
   const attendance = (attendanceResult.data ?? []) as RoboticsRow[];
