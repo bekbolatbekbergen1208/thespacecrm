@@ -1,74 +1,104 @@
 import Link from "next/link";
-import { createAccount, login } from "@/app/actions";
-import { Field, SubmitButton } from "@/components/app/auth-card";
+import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
 import { formatAuthError } from "@/lib/auth-errors";
-import { getServerDictionary } from "@/lib/i18n-server";
 
 export default async function AuthPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; message?: string }>;
 }) {
-  const [params, t] = await Promise.all([searchParams, getServerDictionary()]);
+  const params = await searchParams;
   const error = formatAuthError(params.error);
 
   return (
     <main className="min-h-screen bg-slate-950 px-5 py-10 text-white">
-      <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[1fr_0.9fr]">
-        <section className="flex min-h-[calc(100vh-5rem)] flex-col justify-center">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="group flex items-center gap-3 text-lg font-black tracking-wide text-white">
-              <BrandLogo className="h-9 w-9" />
-              CRM.Space
-            </Link>
-            <LanguageSwitcher />
-          </div>
-          <h1 className="mt-10 max-w-2xl text-4xl font-black tracking-tight sm:text-6xl">{t.createAccountOrSignIn}</h1>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-300">
-            {t.authSubtitle}
-          </p>
-          <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
-            <a href="#create-account" className="rounded-[8px] border border-cyan-300/30 bg-cyan-300/10 p-5 text-sm font-bold text-cyan-50">
-              {t.createAccount}
-            </a>
-            <a href="#sign-in" className="rounded-[8px] border border-white/10 bg-white/[0.045] p-5 text-sm font-bold text-white">
-              {t.signIn}
-            </a>
-          </div>
-        </section>
-        <section className="grid content-center gap-5">
-          {error && <p className="rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm leading-6 text-red-100">{error}</p>}
-          {params.message && <p className="rounded-[8px] border border-cyan-300/30 bg-cyan-300/10 p-3 text-sm text-cyan-100">{params.message}</p>}
-          <div id="create-account" className="rounded-[8px] border border-white/10 bg-white/[0.045] p-6 shadow-glow backdrop-blur">
-            <h2 className="text-2xl font-bold">{t.createAccount}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{t.afterAccount}</p>
-            <form action={createAccount} className="mt-6 space-y-4">
-              <Field label={t.fullName} name="fullName" />
-              <Field label={t.email} name="email" type="email" />
-              <Field label={t.phone} name="phone" type="tel" />
-              <Field label={t.password} name="password" type="password" />
-              <Field label={t.confirmPassword} name="confirmPassword" type="password" />
-              <SubmitButton>{t.createAccount}</SubmitButton>
-            </form>
-            <p className="mt-5 text-sm text-slate-300">
-              {t.mentor}? <Link className="font-bold text-cyan-100" href="/signup/mentor">{t.mentorRegistration}</Link>
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col">
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" className="group flex items-center gap-3 text-lg font-black tracking-wide text-white">
+            <BrandLogo className="h-10 w-10" />
+            CRM.Space
+          </Link>
+          <LanguageSwitcher />
+        </div>
+
+        <section className="grid flex-1 place-items-center py-12">
+          <div className="w-full max-w-4xl">
+            <p className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
+              Secure workspace
             </p>
-          </div>
-          <div id="sign-in" className="rounded-[8px] border border-white/10 bg-white/[0.045] p-6 backdrop-blur">
-            <h2 className="text-2xl font-bold">{t.signIn}</h2>
-            <form action={login} className="mt-6 space-y-4">
-              <Field label={t.email} name="email" type="email" />
-              <Field label={t.password} name="password" type="password" />
-              <SubmitButton>{t.signIn}</SubmitButton>
-            </form>
-            <p className="mt-5 text-sm text-slate-300">
-              {t.needHelp} <Link className="text-cyan-100" href="/login">{t.openSignIn}</Link>
+            <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">
+              Выберите действие
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+              Сначала выберите регистрацию или вход. Формы откроются на отдельных страницах, чтобы экран был простым и быстрым.
             </p>
+
+            {(error || params.message) && (
+              <div className="mt-6 grid gap-3">
+                {error && <p className="rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{error}</p>}
+                {params.message && <p className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-3 text-sm font-semibold text-cyan-100">{params.message}</p>}
+              </div>
+            )}
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <AuthChoiceCard
+                href="/signup"
+                title="Регистрация"
+                description="Создать новый аккаунт: founder, employee или mentor."
+                icon={<UserPlus className="h-6 w-6" />}
+                cta="Открыть регистрацию"
+                primary
+              />
+              <AuthChoiceCard
+                href="/login"
+                title="Вход"
+                description="Войти в уже созданный аккаунт CRM.Space."
+                icon={<LogIn className="h-6 w-6" />}
+                cta="Открыть вход"
+              />
+            </div>
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+function AuthChoiceCard({
+  href,
+  title,
+  description,
+  icon,
+  cta,
+  primary = false,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  cta: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group rounded-[28px] border p-6 shadow-soft transition hover:-translate-y-0.5 ${
+        primary
+          ? "border-cyan-300/30 bg-cyan-300/[0.08] hover:bg-cyan-300/[0.12]"
+          : "border-white/10 bg-white/[0.045] hover:border-cyan-300/25 hover:bg-white/[0.06]"
+      }`}
+    >
+      <span className="grid h-14 w-14 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100 transition group-hover:scale-105">
+        {icon}
+      </span>
+      <h2 className="mt-5 text-2xl font-black text-white">{title}</h2>
+      <p className="mt-2 min-h-12 text-sm leading-6 text-slate-300">{description}</p>
+      <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-cyan-100">
+        {cta}
+        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+      </span>
+    </Link>
   );
 }

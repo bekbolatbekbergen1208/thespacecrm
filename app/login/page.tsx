@@ -18,7 +18,7 @@ export default async function LoginPage({
       message={params.message}
       footer={
         <div className="space-y-2">
-          <p>New to CRM.Space? <Link className="text-cyan-100" href="/auth">Create an account</Link></p>
+          <p>New to CRM.Space? <Link className="text-cyan-100" href="/signup">Create an account</Link></p>
           <p>Mentor account? <Link className="text-cyan-100" href="/signup/mentor">Request mentor access</Link></p>
           <p>Already registered without a company? <Link className="text-cyan-100" href="/onboarding">Choose your role</Link></p>
         </div>

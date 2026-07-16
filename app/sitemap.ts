@@ -5,6 +5,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const paths = [
     "",
     "/auth",
+    "/signup",
     "/login",
     "/reset-password",
     "/onboarding",
