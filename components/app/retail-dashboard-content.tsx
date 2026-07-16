@@ -12,6 +12,7 @@ import {
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
+import { PhotoSearchField } from "@/components/app/photo-search-field";
 import { canManage, requireUser } from "@/lib/auth";
 import { ArchiveRestore, BarChart3, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleDollarSign, Download, Image as ImageIcon, MapPin, MessageCircle, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
@@ -242,15 +243,7 @@ export async function RetailDashboardContent({
               className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500"
             />
           </label>
-          <label className="relative">
-            <ImageIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <input
-              name="photo"
-              defaultValue={params.photo ?? ""}
-              placeholder="Фото URL / ключ"
-              className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500"
-            />
-          </label>
+          <PhotoSearchField defaultValue={params.photo ?? ""} />
           <label className="relative">
             <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input type="date" name="date" defaultValue={selectedDate} className="premium-input h-12 w-full pl-11 pr-4 text-sm text-white outline-none" />
