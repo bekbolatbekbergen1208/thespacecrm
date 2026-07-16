@@ -46,8 +46,8 @@ export async function RetailDashboardContent({
   const showDebts = section === "debts";
   const showTrash = section === "trash";
   const showAssistant = section === "assistant";
-  const shouldFetchSales = showOverview || showProducts || showCalendar || showReports || showAssistant;
-  const shouldFetchDebts = showOverview || showDebts;
+  const shouldFetchSales = showProducts || showCalendar || showReports || showAssistant;
+  const shouldFetchDebts = showDebts;
   const pageTitles: Record<RetailSection, { title: string; description: string }> = {
     overview: {
       title: "Retail Store",
@@ -79,13 +79,17 @@ export async function RetailDashboardContent({
     },
   };
 
+  const productColumns = "id,company_id,created_at,name,category,address,photo_url,photo_keywords,notes,purchase_price,sale_price,initial_quantity,status";
+  const saleColumns = "id,company_id,product_id,sale_date,quantity,payment_method,total_amount,profit_amount,customer_name,notes";
+  const debtColumns = "id,company_id,product_id,customer_name,phone,amount,due_date,status,notes,last_reminded_at,paid_at,created_at";
+
   const [{ data: products, error: productsError }, { data: sales, error: salesError }, { data: debts, error: debtsError }] = await Promise.all([
-    supabase.from("retail_products").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
+    supabase.from("retail_products").select(productColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
     shouldFetchSales
-      ? supabase.from("retail_product_sales").select("*").eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000)
+      ? supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000)
       : Promise.resolve({ data: [], error: null }),
     shouldFetchDebts
-      ? supabase.from("retail_debts").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
+      ? supabase.from("retail_debts").select(debtColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
       : Promise.resolve({ data: [], error: null }),
   ]);
   const schemaError = [productsError, salesError, debtsError].find((error) => error?.message?.toLowerCase().includes("schema cache") || error?.message?.toLowerCase().includes("retail_products") || error?.message?.toLowerCase().includes("retail_debts"));
@@ -168,13 +172,13 @@ export async function RetailDashboardContent({
           icon={<BarChart3 className="h-4 w-4" />}
         >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
-          <Metric title="Товары" value={activeProducts.length} note={`остаток ${totalRemaining} шт`} icon={<Package className="h-4 w-4" />} />
-          <Metric title="Продано сегодня" value={dayReport.quantity} note={selectedDate} icon={<ShoppingCart className="h-4 w-4" />} />
-          <Metric title="Выручка" value={`${dayReport.revenue.toLocaleString()} ₸`} note="за выбранный день" icon={<CircleDollarSign className="h-4 w-4" />} />
-          <Metric title="Прибыль" value={`${dayReport.profit.toLocaleString()} ₸`} note={`Всего ${totalReport.profit.toLocaleString()} ₸`} icon={<BarChart3 className="h-4 w-4" />} danger={dayReport.profit < 0} />
-          <Metric title="Возвраты" value={Math.abs(dayReturns.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0))} note="шт за день" icon={<RotateCcw className="h-4 w-4" />} danger={dayReturns.length > 0} />
-          <Metric title="Долги" value={`${debtTotal.toLocaleString()} ₸`} note={`${dueDebts.length} напомнить`} icon={<Bell className="h-4 w-4" />} danger={dueDebts.length > 0} />
-          <Metric title="Мусор" value={archivedProducts.length} note="архивные товары" icon={<Trash2 className="h-4 w-4" />} danger={archivedProducts.length > 0} />
+          <Metric title="Товары" value={activeProducts.length} note="активные товары" icon={<Package className="h-4 w-4" />} />
+          <Metric title="Остаток" value={activeProducts.reduce((sum, product) => sum + Number(product.initial_quantity ?? 0), 0)} note="по добавленному количеству" icon={<ShoppingCart className="h-4 w-4" />} />
+          <Metric title="Архив" value={archivedProducts.length} note="товары в мусоре" icon={<Trash2 className="h-4 w-4" />} danger={archivedProducts.length > 0} />
+          <Metric title="Продажи" value="отдельно" note="откройте товары или календарь" icon={<CircleDollarSign className="h-4 w-4" />} />
+          <Metric title="Отчёты" value="отдельно" note="быстрая отдельная страница" icon={<BarChart3 className="h-4 w-4" />} />
+          <Metric title="Долги" value="отдельно" note="загрузка без продаж" icon={<Bell className="h-4 w-4" />} />
+          <Metric title="AI" value="отдельно" note="вопросы по данным" icon={<Bot className="h-4 w-4" />} />
         </div>
         </CollapsibleSection>
       )}
