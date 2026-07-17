@@ -1,6 +1,6 @@
 import { Card, PageHeader } from "@/components/app/app-shell";
 import { BrandLogo } from "@/components/app/brand-logo";
-import { PrintButton } from "@/components/app/print-button";
+import { ContractPdfPrintButton } from "@/components/app/contract-pdf-print-button";
 import { requireUser } from "@/lib/auth";
 
 type Row = {
@@ -30,13 +30,13 @@ export default async function EducationContractPage() {
         <Card>
           <h2 className="text-xl font-black text-white">Как пользоваться</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Заполните поля в договоре, укажите сумму и дату оплаты, затем нажмите печать. Поля остаются в документе и печатаются вместе с текстом договора.
+            Заполните поля в договоре, укажите сумму и дату оплаты, затем нажмите “PDF и печать”. Сначала откроется чистая PDF-версия договора, потом появится печать.
           </p>
         </Card>
-        <PrintButton label="Печать договора" />
+        <ContractPdfPrintButton label="PDF и печать договора" />
       </div>
 
-      <section className="print-area contract-paper mx-auto max-w-5xl rounded-[2rem] border border-white/10 bg-white p-6 text-slate-950 shadow-2xl shadow-black/30 md:p-10">
+      <section data-contract-paper className="print-area contract-paper mx-auto max-w-5xl rounded-[2rem] border border-white/10 bg-white p-6 text-slate-950 shadow-2xl shadow-black/30 md:p-10">
         <div className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-start md:justify-between">
           <div className="flex items-center gap-4">
             <BrandLogo className="h-14 w-14" />
