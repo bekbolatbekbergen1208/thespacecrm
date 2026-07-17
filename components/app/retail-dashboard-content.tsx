@@ -93,17 +93,14 @@ export async function RetailDashboardContent({
   };
 
   const productColumns = retailProductColumns(section);
-  const saleColumns = "id,company_id,product_id,sale_date,quantity,payment_method,total_amount,profit_amount,customer_name,notes";
+  const saleColumns = retailSaleColumns(section);
   const debtColumns = "id,company_id,product_id,customer_name,phone,amount,due_date,status,notes,last_reminded_at,paid_at,created_at";
   const calendarOnly = showCalendar && !showProducts && !showReports && !showAssistant;
+  const productLimit = showOverview ? 200 : showCalendar ? 300 : 500;
 
   const [{ data: products, error: productsError }, { data: sales, error: salesError }, { data: debts, error: debtsError }] = await Promise.all([
-    supabase.from("retail_products").select(productColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500),
-    shouldFetchSales
-      ? calendarOnly
-        ? supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId).eq("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(300)
-        : supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId).order("sale_date", { ascending: false }).limit(1000)
-      : Promise.resolve({ data: [], error: null }),
+    supabase.from("retail_products").select(productColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(productLimit),
+    fetchRetailSales({ supabase, companyId, selectedDate, section, shouldFetchSales, calendarOnly, saleColumns }),
     shouldFetchDebts
       ? supabase.from("retail_debts").select(debtColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
       : Promise.resolve({ data: [], error: null }),
@@ -116,6 +113,7 @@ export async function RetailDashboardContent({
   const allProducts = (products ?? []) as unknown as RetailRow[];
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
   const archivedProducts = allProducts.filter((product) => product.status === "archived");
+  const saleSummaryByProduct = buildSaleSummaryByProduct(saleRows);
   const needsProductRows = showProducts || showReports || showAssistant;
   const productRows = needsProductRows
     ? activeProducts.filter((product) => {
@@ -130,7 +128,7 @@ export async function RetailDashboardContent({
       })
     : activeProducts;
   const needsSummaries = showProducts || showReports || showAssistant;
-  const summaries = needsSummaries ? productRows.map((product) => summarizeProduct(product, saleRows)) : [];
+  const summaries = needsSummaries ? productRows.map((product) => summarizeProduct(product, saleSummaryByProduct)) : [];
   const needsDaySales = showCalendar || showReports || showAssistant;
   const daySales = needsDaySales ? saleRows.filter((sale) => sale.sale_date === selectedDate) : [];
   const dayReturns = showAssistant ? daySales.filter((sale) => Number(sale.quantity ?? 0) < 0) : [];
@@ -157,7 +155,7 @@ export async function RetailDashboardContent({
   const inventoryCost = showReports ? summaries.reduce((sum, item) => sum + Math.max(0, item.remaining) * Number(item.product.purchase_price ?? 0), 0) : 0;
   const margin = showReports && totalReport.revenue ? Math.round((totalReport.profit / totalReport.revenue) * 100) : 0;
   const dailyTrend = showReports ? lastSevenDays(selectedDate).map((date) => ({ date, ...sumSales(saleRows.filter((sale) => sale.sale_date === date)) })) : [];
-  const addressReports = showReports ? groupRetailByAddress(activeProducts, saleRows) : [];
+  const addressReports = showReports ? groupRetailByAddress(activeProducts, saleSummaryByProduct) : [];
   const aiQuestion = params.aiq ?? "";
   const assistantAnswer = aiQuestion
     ? answerRetailQuestion({ question: aiQuestion, selectedDate, products: activeProducts, archivedProducts, sales: saleRows, daySales, summaries, dayReport, totalReport })
@@ -646,7 +644,7 @@ function RetailReportsSection({
         <ReportMetric title="Сегодня" value={`${dayReport.revenue.toLocaleString()} ₸`} note={`${dayReport.quantity} шт · прибыль ${dayReport.profit.toLocaleString()} ₸`} icon={<CalendarDays className="h-4 w-4" />} />
         <ReportMetric title="7 дней" value={`${last7Report.revenue.toLocaleString()} ₸`} note={`${last7Report.quantity} шт · прибыль ${last7Report.profit.toLocaleString()} ₸`} icon={<TrendingUp className="h-4 w-4" />} />
         <ReportMetric title="30 дней" value={`${last30Report.revenue.toLocaleString()} ₸`} note={`${last30Report.quantity} шт · прибыль ${last30Report.profit.toLocaleString()} ₸`} icon={<PieChart className="h-4 w-4" />} />
-        <ReportMetric title="Маржа" value={`${margin}%`} note={`вся история: ${totalReport.revenue.toLocaleString()} ₸`} icon={<Percent className="h-4 w-4" />} danger={margin < 15 && totalReport.revenue > 0} />
+        <ReportMetric title="Маржа" value={`${margin}%`} note={`30 дней: ${totalReport.revenue.toLocaleString()} ₸`} icon={<Percent className="h-4 w-4" />} danger={margin < 15 && totalReport.revenue > 0} />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -1100,12 +1098,69 @@ function ProductPhoto({ src, name }: { src: string; name: string }) {
   );
 }
 
-function summarizeProduct(product: RetailRow, sales: RetailRow[]) {
-  const productSales = sales.filter((sale) => sale.product_id === product.id);
-  const sold = productSales.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0);
-  const profit = productSales.reduce((sum, sale) => sum + Number(sale.profit_amount ?? 0), 0);
+function buildSaleSummaryByProduct(sales: RetailRow[]) {
+  const map = new Map<string, { sold: number; revenue: number; profit: number }>();
+
+  for (const sale of sales) {
+    const productId = String(sale.product_id ?? "");
+    if (!productId) continue;
+    const current = map.get(productId) ?? { sold: 0, revenue: 0, profit: 0 };
+    current.sold += Number(sale.quantity ?? 0);
+    current.revenue += Number(sale.total_amount ?? 0);
+    current.profit += Number(sale.profit_amount ?? 0);
+    map.set(productId, current);
+  }
+
+  return map;
+}
+
+function summarizeProduct(product: RetailRow, saleSummaryByProduct: Map<string, { sold: number; revenue: number; profit: number }>) {
+  const summary = saleSummaryByProduct.get(String(product.id)) ?? { sold: 0, revenue: 0, profit: 0 };
+  const sold = summary.sold;
+  const profit = summary.profit;
   const remaining = Number(product.initial_quantity ?? 0) - sold;
   return { product, sold, remaining, profit };
+}
+
+function retailSaleColumns(section: RetailSection) {
+  if (section === "products") return "id,company_id,product_id,quantity,profit_amount";
+  return "id,company_id,product_id,sale_date,quantity,payment_method,total_amount,profit_amount,customer_name,notes";
+}
+
+function fetchRetailSales({
+  supabase,
+  companyId,
+  selectedDate,
+  section,
+  shouldFetchSales,
+  calendarOnly,
+  saleColumns,
+}: {
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"];
+  companyId: string;
+  selectedDate: string;
+  section: RetailSection;
+  shouldFetchSales: boolean;
+  calendarOnly: boolean;
+  saleColumns: string;
+}) {
+  if (!shouldFetchSales) return Promise.resolve({ data: [], error: null });
+
+  const query = supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId);
+
+  if (calendarOnly) {
+    return query.eq("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(300);
+  }
+
+  if (section === "reports") {
+    return query.gte("sale_date", dateMinus(selectedDate, 29)).lte("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(700);
+  }
+
+  if (section === "assistant") {
+    return query.gte("sale_date", dateMinus(selectedDate, 29)).lte("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(500);
+  }
+
+  return query.order("created_at", { ascending: false }).limit(700);
 }
 
 function retailProductColumns(section: RetailSection) {
@@ -1167,7 +1222,7 @@ function formatDateTime(value: string) {
   return date.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function groupRetailByAddress(products: RetailRow[], sales: RetailRow[]) {
+function groupRetailByAddress(products: RetailRow[], saleSummaryByProduct: Map<string, { sold: number; revenue: number; profit: number }>) {
   const map = new Map<
     string,
     {
@@ -1182,15 +1237,14 @@ function groupRetailByAddress(products: RetailRow[], sales: RetailRow[]) {
 
   for (const product of products) {
     const address = String(product.address || "Адрес не указан");
-    const productSales = sales.filter((sale) => sale.product_id === product.id);
-    const sold = productSales.reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0);
+    const salesSummary = saleSummaryByProduct.get(String(product.id)) ?? { sold: 0, revenue: 0, profit: 0 };
     const current = map.get(address) ?? { address, products: 0, quantity: 0, revenue: 0, profit: 0, remaining: 0 };
 
     current.products += 1;
-    current.quantity += sold;
-    current.revenue += productSales.reduce((sum, sale) => sum + Number(sale.total_amount ?? 0), 0);
-    current.profit += productSales.reduce((sum, sale) => sum + Number(sale.profit_amount ?? 0), 0);
-    current.remaining += Number(product.initial_quantity ?? 0) - sold;
+    current.quantity += salesSummary.sold;
+    current.revenue += salesSummary.revenue;
+    current.profit += salesSummary.profit;
+    current.remaining += Number(product.initial_quantity ?? 0) - salesSummary.sold;
     map.set(address, current);
   }
 
