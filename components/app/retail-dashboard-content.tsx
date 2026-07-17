@@ -30,6 +30,7 @@ export type RetailSearchParams = {
   address?: string;
   photo?: string;
   date?: string;
+  page?: string;
   saved?: string;
   aiq?: string;
 };
@@ -51,6 +52,7 @@ export async function RetailDashboardContent({
   const categoryQuery = (params.category ?? "").toLowerCase();
   const addressQuery = (params.address ?? "").toLowerCase();
   const photoQuery = (params.photo ?? "").toLowerCase();
+  const currentPage = Math.max(1, Number(params.page ?? 1) || 1);
   const sectionPath = retailSectionPath(section);
   const showOverview = section === "overview";
   const showProducts = section === "products";
@@ -97,13 +99,14 @@ export async function RetailDashboardContent({
   const debtColumns = "id,company_id,product_id,customer_name,phone,amount,due_date,status,notes,last_reminded_at,paid_at,created_at";
   const calendarOnly = showCalendar && !showProducts && !showReports && !showAssistant;
   const productLimit = retailProductLimit(section);
+  const productOffset = showProducts ? (currentPage - 1) * productLimit : 0;
 
   let productsResult: Awaited<ReturnType<typeof fetchRetailProducts>>;
   let salesResult: Awaited<ReturnType<typeof fetchRetailSales>>;
   let debtsResult: { data: unknown[] | null; error: { message?: string } | null };
 
   if (showProducts) {
-    productsResult = await fetchRetailProducts({ supabase, companyId, section, productColumns, limit: productLimit, query, categoryQuery, addressQuery, photoQuery });
+    productsResult = await fetchRetailProducts({ supabase, companyId, section, productColumns, limit: productLimit, offset: productOffset, query, categoryQuery, addressQuery, photoQuery });
     const productIds = ((productsResult.data ?? []) as unknown as RetailRow[]).map((product) => String(product.id)).filter(Boolean);
     [salesResult, debtsResult] = await Promise.all([
       fetchRetailSales({ supabase, companyId, selectedDate, section, shouldFetchSales, calendarOnly, saleColumns, productIds }),
@@ -111,7 +114,7 @@ export async function RetailDashboardContent({
     ]);
   } else {
     [productsResult, salesResult, debtsResult] = await Promise.all([
-      fetchRetailProducts({ supabase, companyId, section, productColumns, limit: productLimit, query, categoryQuery, addressQuery, photoQuery }),
+      fetchRetailProducts({ supabase, companyId, section, productColumns, limit: productLimit, offset: 0, query, categoryQuery, addressQuery, photoQuery }),
       fetchRetailSales({ supabase, companyId, selectedDate, section, shouldFetchSales, calendarOnly, saleColumns }),
       shouldFetchDebts
         ? supabase.from("retail_debts").select(debtColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
@@ -128,6 +131,7 @@ export async function RetailDashboardContent({
   const debtRows = (debts ?? []) as unknown as RetailRow[];
   const openDebts = debtRows.filter((debt) => debt.status !== "paid");
   const allProducts = (products ?? []) as unknown as RetailRow[];
+  const hasNextProductsPage = showProducts && allProducts.length === productLimit;
   const activeProducts = allProducts.filter((product) => product.status !== "archived");
   const archivedProducts = allProducts.filter((product) => product.status === "archived");
   const saleSummaryByProduct = buildSaleSummaryByProduct(saleRows);
@@ -431,120 +435,140 @@ export async function RetailDashboardContent({
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-black text-white">Таблица товаров</h2>
-              <p className="text-sm text-slate-400">Можно назначить товар проданным и сразу увидеть остаток.</p>
+              <p className="text-sm text-slate-400">Можно назначить товар проданным и сразу увидеть остаток. Список грузится страницами по {productLimit} товаров.</p>
             </div>
-            <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">{productRows.length} товаров</span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+                Стр. {currentPage} · {productRows.length} товаров
+              </span>
+              <RetailProductPagination
+                currentPage={currentPage}
+                hasNext={hasNextProductsPage}
+                sectionPath={sectionPath}
+                params={params}
+              />
+            </div>
           </div>
           {productRows.length ? (
-            <div className="overflow-hidden rounded-3xl border border-white/10">
-              <div className="max-h-[720px] overflow-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="sticky top-0 z-10 bg-slate-950/95 text-xs uppercase tracking-[0.12em] text-slate-500 backdrop-blur">
-                    <tr>
-                      <th className="px-4 py-3">Товар</th>
-                      <th className="px-4 py-3">Цена</th>
-                      <th className="px-4 py-3">Продано</th>
-                      <th className="px-4 py-3">Осталось</th>
-                      <th className="px-4 py-3">Действие</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {summaries.map(({ product, sold, remaining, profit }) => (
-                      <tr key={product.id} className="bg-white/[0.025] transition hover:bg-cyan-300/[0.06]">
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <ProductPhoto src={String(product.photo_url ?? "")} name={String(product.name ?? "Товар")} />
-                            <div>
-                              <p className="font-black text-white">{product.name}</p>
-                              <p className="text-xs text-slate-500">{product.category || "Без категории"}</p>
-                              {product.address && <p className="mt-1 text-xs font-semibold text-cyan-100/80">{product.address}</p>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <p className="font-black text-white">{Number(product.purchase_price ?? 0).toLocaleString()} ₸</p>
-                          <p className="text-xs text-slate-500">закупочная цена</p>
-                        </td>
-                        <td className="px-4 py-4 text-slate-300">{sold} шт</td>
-                        <td className="px-4 py-4">
-                          <span className={`rounded-full px-3 py-1 text-xs font-black ${remaining <= 0 ? "bg-red-500 text-white" : remaining <= 3 ? "bg-yellow-300 text-yellow-950" : "bg-emerald-300 text-emerald-950"}`}>
-                            {remaining} шт
-                          </span>
-                          <p className="mt-2 text-xs text-slate-500">прибыль {profit.toLocaleString()} ₸</p>
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <details className="group min-w-64 rounded-2xl border border-white/10 bg-slate-950/35 p-2">
-                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/10">
-                              <span>Открыть функции</span>
-                              <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
-                            </summary>
-                            <div className="mt-3 grid gap-3">
-                              <form action={markRetailProductSold} className="grid gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/5 p-2">
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-100">Продажа</p>
-                                <input type="hidden" name="productId" value={product.id} />
-                                <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                                  <input name="salePrice" type="number" min="0" placeholder="Цена" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                </div>
-                                <select name="paymentMethod" defaultValue="cash" className="premium-input h-9 px-3 text-xs text-white outline-none">
-                                  <option value="cash">Нал</option>
-                                  <option value="kaspi">Kaspi</option>
-                                  <option value="card">Карта</option>
-                                  <option value="transfer">Перевод</option>
-                                </select>
-                                <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                <SmallButton>Продано</SmallButton>
-                              </form>
-
-                              <form action={saveRetailDebt} className="grid gap-2 rounded-2xl border border-red-300/20 bg-red-500/5 p-2">
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-red-100">В долг</p>
-                                <input type="hidden" name="productId" value={product.id} />
-                                <input name="customerName" placeholder="Клиент" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                <input name="phone" placeholder="WhatsApp номер" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input name="amount" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                  <input name="dueDate" type="date" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                                </div>
-                                <input name="notes" placeholder="Комментарий" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                <button className="premium-button h-9 w-full justify-center border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100 hover:bg-red-500/15">
-                                  <Bell className="h-3.5 w-3.5" />
-                                  Записать долг
-                                </button>
-                              </form>
-
-                              <form action={returnRetailProduct} className="grid gap-2 rounded-2xl border border-yellow-300/20 bg-yellow-300/5 p-2">
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-yellow-100">Возврат</p>
-                                <input type="hidden" name="productId" value={product.id} />
-                                <input type="date" name="returnDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
-                                  <input name="returnPrice" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                </div>
-                                <input name="customerName" placeholder="Кто вернул" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
-                                <button className="premium-button h-9 w-full justify-center border border-yellow-300/20 bg-yellow-300/10 px-3 text-xs font-black text-yellow-100 hover:bg-yellow-300/15">
-                                  <RotateCcw className="h-3.5 w-3.5" />
-                                  Возврат
-                                </button>
-                              </form>
-
-                              <form action={deleteRetailProduct}>
-                                <input type="hidden" name="productId" value={product.id} />
-                                <input type="hidden" name="selectedDate" value={selectedDate} />
-                                <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Удалить товар
-                                </button>
-                              </form>
-                            </div>
-                          </details>
-                        </td>
+            <>
+              <div className="overflow-hidden rounded-3xl border border-white/10">
+                <div className="max-h-[720px] overflow-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="sticky top-0 z-10 bg-slate-950/95 text-xs uppercase tracking-[0.12em] text-slate-500 backdrop-blur">
+                      <tr>
+                        <th className="px-4 py-3">Товар</th>
+                        <th className="px-4 py-3">Цена</th>
+                        <th className="px-4 py-3">Продано</th>
+                        <th className="px-4 py-3">Осталось</th>
+                        <th className="px-4 py-3">Действие</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {summaries.map(({ product, sold, remaining, profit }) => (
+                        <tr key={product.id} className="bg-white/[0.025] transition hover:bg-cyan-300/[0.06]">
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <ProductPhoto src={String(product.photo_url ?? "")} name={String(product.name ?? "Товар")} />
+                              <div>
+                                <p className="font-black text-white">{product.name}</p>
+                                <p className="text-xs text-slate-500">{product.category || "Без категории"}</p>
+                                {product.address && <p className="mt-1 text-xs font-semibold text-cyan-100/80">{product.address}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <p className="font-black text-white">{Number(product.purchase_price ?? 0).toLocaleString()} ₸</p>
+                            <p className="text-xs text-slate-500">закупочная цена</p>
+                          </td>
+                          <td className="px-4 py-4 text-slate-300">{sold} шт</td>
+                          <td className="px-4 py-4">
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ${remaining <= 0 ? "bg-red-500 text-white" : remaining <= 3 ? "bg-yellow-300 text-yellow-950" : "bg-emerald-300 text-emerald-950"}`}>
+                              {remaining} шт
+                            </span>
+                            <p className="mt-2 text-xs text-slate-500">прибыль {profit.toLocaleString()} ₸</p>
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            <details className="group min-w-64 rounded-2xl border border-white/10 bg-slate-950/35 p-2">
+                              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/10">
+                                <span>Открыть функции</span>
+                                <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+                              </summary>
+                              <div className="mt-3 grid gap-3">
+                                <form action={markRetailProductSold} className="grid gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/5 p-2">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-100">Продажа</p>
+                                  <input type="hidden" name="productId" value={product.id} />
+                                  <input type="date" name="saleDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                    <input name="salePrice" type="number" min="0" placeholder="Цена" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  </div>
+                                  <select name="paymentMethod" defaultValue="cash" className="premium-input h-9 px-3 text-xs text-white outline-none">
+                                    <option value="cash">Нал</option>
+                                    <option value="kaspi">Kaspi</option>
+                                    <option value="card">Карта</option>
+                                    <option value="transfer">Перевод</option>
+                                  </select>
+                                  <input name="customerName" placeholder="Покупатель" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  <SmallButton>Продано</SmallButton>
+                                </form>
+
+                                <form action={saveRetailDebt} className="grid gap-2 rounded-2xl border border-red-300/20 bg-red-500/5 p-2">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-red-100">В долг</p>
+                                  <input type="hidden" name="productId" value={product.id} />
+                                  <input name="customerName" placeholder="Клиент" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  <input name="phone" placeholder="WhatsApp номер" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input name="amount" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                    <input name="dueDate" type="date" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                  </div>
+                                  <input name="notes" placeholder="Комментарий" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  <button className="premium-button h-9 w-full justify-center border border-red-300/20 bg-red-500/10 px-3 text-xs font-black text-red-100 hover:bg-red-500/15">
+                                    <Bell className="h-3.5 w-3.5" />
+                                    Записать долг
+                                  </button>
+                                </form>
+
+                                <form action={returnRetailProduct} className="grid gap-2 rounded-2xl border border-yellow-300/20 bg-yellow-300/5 p-2">
+                                  <p className="text-xs font-black uppercase tracking-[0.12em] text-yellow-100">Возврат</p>
+                                  <input type="hidden" name="productId" value={product.id} />
+                                  <input type="date" name="returnDate" defaultValue={selectedDate} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input name="quantity" type="number" min="1" defaultValue={1} className="premium-input h-9 px-3 text-xs text-white outline-none" />
+                                    <input name="returnPrice" type="number" min="0" placeholder="Сумма" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  </div>
+                                  <input name="customerName" placeholder="Кто вернул" className="premium-input h-9 px-3 text-xs text-white outline-none placeholder:text-slate-500" />
+                                  <button className="premium-button h-9 w-full justify-center border border-yellow-300/20 bg-yellow-300/10 px-3 text-xs font-black text-yellow-100 hover:bg-yellow-300/15">
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    Возврат
+                                  </button>
+                                </form>
+
+                                <form action={deleteRetailProduct}>
+                                  <input type="hidden" name="productId" value={product.id} />
+                                  <input type="hidden" name="selectedDate" value={selectedDate} />
+                                  <button className="premium-button h-10 w-full justify-center border border-red-300/25 bg-red-500/15 px-3 text-xs font-black text-red-100 hover:bg-red-500/25">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Удалить товар
+                                  </button>
+                                </form>
+                              </div>
+                            </details>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+              <div className="mt-4">
+                <RetailProductPagination
+                  currentPage={currentPage}
+                  hasNext={hasNextProductsPage}
+                  sectionPath={sectionPath}
+                  params={params}
+                />
+              </div>
+            </>
           ) : (
             <EmptyState text="Пока товаров нет. Добавьте первый товар сверху или измените поиск." />
           )}
@@ -1115,6 +1139,52 @@ function ProductPhoto({ src, name }: { src: string; name: string }) {
   );
 }
 
+function RetailProductPagination({
+  currentPage,
+  hasNext,
+  sectionPath,
+  params,
+}: {
+  currentPage: number;
+  hasNext: boolean;
+  sectionPath: string;
+  params: RetailSearchParams;
+}) {
+  if (currentPage <= 1 && !hasNext) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {currentPage > 1 && (
+        <a
+          href={retailPageHref(sectionPath, params, currentPage - 1)}
+          className="premium-button h-9 justify-center border border-white/10 bg-white/[0.045] px-3 text-xs text-slate-200 hover:bg-white/[0.08]"
+        >
+          Назад
+        </a>
+      )}
+      {hasNext && (
+        <a
+          href={retailPageHref(sectionPath, params, currentPage + 1)}
+          className="premium-button h-9 justify-center border border-cyan-300/20 bg-cyan-300/10 px-3 text-xs text-cyan-100 hover:bg-cyan-300/15"
+        >
+          Дальше
+        </a>
+      )}
+    </div>
+  );
+}
+
+function retailPageHref(sectionPath: string, params: RetailSearchParams, page: number) {
+  const search = new URLSearchParams();
+  for (const key of ["q", "category", "address", "photo", "date"] as const) {
+    const value = params[key];
+    if (value) search.set(key, value);
+  }
+  if (page > 1) search.set("page", String(page));
+  const queryString = search.toString();
+  return queryString ? `${sectionPath}?${queryString}` : sectionPath;
+}
+
 function buildSaleSummaryByProduct(sales: RetailRow[]) {
   const map = new Map<string, { sold: number; revenue: number; profit: number }>();
 
@@ -1163,6 +1233,7 @@ function fetchRetailProducts({
   section,
   productColumns,
   limit,
+  offset,
   query,
   categoryQuery,
   addressQuery,
@@ -1173,6 +1244,7 @@ function fetchRetailProducts({
   section: RetailSection;
   productColumns: string;
   limit: number;
+  offset: number;
   query: string;
   categoryQuery: string;
   addressQuery: string;
@@ -1199,7 +1271,7 @@ function fetchRetailProducts({
   if (address) request = request.ilike("address", `%${address}%`);
   if (photo) request = request.or(`photo_url.ilike.%${photo}%,photo_keywords.ilike.%${photo}%`);
 
-  return request.order("created_at", { ascending: false }).limit(limit);
+  return request.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
 }
 
 function fetchRetailSales({
