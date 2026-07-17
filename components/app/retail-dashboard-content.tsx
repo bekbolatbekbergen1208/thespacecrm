@@ -96,15 +96,32 @@ export async function RetailDashboardContent({
   const saleColumns = retailSaleColumns(section);
   const debtColumns = "id,company_id,product_id,customer_name,phone,amount,due_date,status,notes,last_reminded_at,paid_at,created_at";
   const calendarOnly = showCalendar && !showProducts && !showReports && !showAssistant;
-  const productLimit = showOverview ? 200 : showCalendar ? 300 : 500;
+  const productLimit = retailProductLimit(section);
 
-  const [{ data: products, error: productsError }, { data: sales, error: salesError }, { data: debts, error: debtsError }] = await Promise.all([
-    supabase.from("retail_products").select(productColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(productLimit),
-    fetchRetailSales({ supabase, companyId, selectedDate, section, shouldFetchSales, calendarOnly, saleColumns }),
-    shouldFetchDebts
-      ? supabase.from("retail_debts").select(debtColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  let productsResult: Awaited<ReturnType<typeof fetchRetailProducts>>;
+  let salesResult: Awaited<ReturnType<typeof fetchRetailSales>>;
+  let debtsResult: { data: unknown[] | null; error: { message?: string } | null };
+
+  if (showProducts) {
+    productsResult = await fetchRetailProducts({ supabase, companyId, section, productColumns, limit: productLimit, query, categoryQuery, addressQuery, photoQuery });
+    const productIds = ((productsResult.data ?? []) as unknown as RetailRow[]).map((product) => String(product.id)).filter(Boolean);
+    [salesResult, debtsResult] = await Promise.all([
+      fetchRetailSales({ supabase, companyId, selectedDate, section, shouldFetchSales, calendarOnly, saleColumns, productIds }),
+      Promise.resolve({ data: [], error: null }),
+    ]);
+  } else {
+    [productsResult, salesResult, debtsResult] = await Promise.all([
+      fetchRetailProducts({ supabase, companyId, section, productColumns, limit: productLimit, query, categoryQuery, addressQuery, photoQuery }),
+      fetchRetailSales({ supabase, companyId, selectedDate, section, shouldFetchSales, calendarOnly, saleColumns }),
+      shouldFetchDebts
+        ? supabase.from("retail_debts").select(debtColumns).eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+  }
+
+  const { data: products, error: productsError } = productsResult;
+  const { data: sales, error: salesError } = salesResult;
+  const { data: debts, error: debtsError } = debtsResult;
   const schemaError = [productsError, salesError, debtsError].find((error) => error?.message?.toLowerCase().includes("schema cache") || error?.message?.toLowerCase().includes("retail_products") || error?.message?.toLowerCase().includes("retail_debts"));
 
   const saleRows = (sales ?? []) as unknown as RetailRow[];
@@ -1127,6 +1144,64 @@ function retailSaleColumns(section: RetailSection) {
   return "id,company_id,product_id,sale_date,quantity,payment_method,total_amount,profit_amount,customer_name,notes";
 }
 
+function retailProductLimit(section: RetailSection) {
+  if (section === "products") return 120;
+  if (section === "overview") return 120;
+  if (section === "calendar") return 150;
+  if (section === "reports") return 300;
+  if (section === "assistant") return 220;
+  return 300;
+}
+
+function cleanRetailSearchTerm(value: string) {
+  return value.trim().replace(/[%*,()]/g, " ").replace(/\s+/g, " ").slice(0, 80);
+}
+
+function fetchRetailProducts({
+  supabase,
+  companyId,
+  section,
+  productColumns,
+  limit,
+  query,
+  categoryQuery,
+  addressQuery,
+  photoQuery,
+}: {
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"];
+  companyId: string;
+  section: RetailSection;
+  productColumns: string;
+  limit: number;
+  query: string;
+  categoryQuery: string;
+  addressQuery: string;
+  photoQuery: string;
+}) {
+  let request = supabase.from("retail_products").select(productColumns).eq("company_id", companyId);
+
+  if (section !== "trash") {
+    request = request.neq("status", "archived");
+  } else {
+    request = request.eq("status", "archived");
+  }
+
+  const search = cleanRetailSearchTerm(query);
+  const category = cleanRetailSearchTerm(categoryQuery);
+  const address = cleanRetailSearchTerm(addressQuery);
+  const photo = cleanRetailSearchTerm(photoQuery);
+
+  if (search) {
+    request = request.or(`name.ilike.%${search}%,category.ilike.%${search}%,address.ilike.%${search}%,photo_keywords.ilike.%${search}%,notes.ilike.%${search}%`);
+  }
+
+  if (category) request = request.ilike("category", `%${category}%`);
+  if (address) request = request.ilike("address", `%${address}%`);
+  if (photo) request = request.or(`photo_url.ilike.%${photo}%,photo_keywords.ilike.%${photo}%`);
+
+  return request.order("created_at", { ascending: false }).limit(limit);
+}
+
 function fetchRetailSales({
   supabase,
   companyId,
@@ -1135,6 +1210,7 @@ function fetchRetailSales({
   shouldFetchSales,
   calendarOnly,
   saleColumns,
+  productIds,
 }: {
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"];
   companyId: string;
@@ -1143,10 +1219,16 @@ function fetchRetailSales({
   shouldFetchSales: boolean;
   calendarOnly: boolean;
   saleColumns: string;
+  productIds?: string[];
 }) {
   if (!shouldFetchSales) return Promise.resolve({ data: [], error: null });
+  if (section === "products" && !productIds?.length) return Promise.resolve({ data: [], error: null });
 
-  const query = supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId);
+  let query = supabase.from("retail_product_sales").select(saleColumns).eq("company_id", companyId);
+
+  if (section === "products" && productIds?.length) {
+    query = query.in("product_id", productIds);
+  }
 
   if (calendarOnly) {
     return query.eq("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(300);
@@ -1160,7 +1242,7 @@ function fetchRetailSales({
     return query.gte("sale_date", dateMinus(selectedDate, 29)).lte("sale_date", selectedDate).order("sale_date", { ascending: false }).limit(500);
   }
 
-  return query.order("created_at", { ascending: false }).limit(700);
+  return query.order("created_at", { ascending: false }).limit(section === "products" ? 400 : 700);
 }
 
 function retailProductColumns(section: RetailSection) {
