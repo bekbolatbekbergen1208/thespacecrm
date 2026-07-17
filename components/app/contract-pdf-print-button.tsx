@@ -11,31 +11,164 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function contractHtmlWithValues() {
-  const paper = document.querySelector<HTMLElement>("[data-contract-paper]");
-  if (!paper) return "";
+function getInputValue(input: HTMLInputElement | null, fallback = "________________") {
+  return input?.value?.trim() || input?.placeholder?.trim() || fallback;
+}
 
-  const clone = paper.cloneNode(true) as HTMLElement;
-  clone.querySelectorAll("input").forEach((input) => {
-    const element = input as HTMLInputElement;
-    const value = element.value || element.placeholder || "";
-    const span = document.createElement("span");
-    span.className = element.className;
-    span.textContent = value;
-    element.replaceWith(span);
-  });
-  return clone.innerHTML;
+function findInputByLabel(labelText: string) {
+  const labels = Array.from(document.querySelectorAll<HTMLLabelElement>("[data-contract-paper] label"));
+  const label = labels.find((item) => item.textContent?.toLowerCase().includes(labelText.toLowerCase()));
+  return label?.querySelector<HTMLInputElement>("input") ?? null;
+}
+
+function findInputByPlaceholder(placeholder: string) {
+  return document.querySelector<HTMLInputElement>(`[data-contract-paper] input[placeholder="${placeholder}"]`);
+}
+
+function field(label: string, value: string) {
+  return `
+    <div class="field">
+      <div class="field-label">${escapeHtml(label)}</div>
+      <div class="field-value">${escapeHtml(value)}</div>
+    </div>
+  `;
+}
+
+function line(label: string, value: string) {
+  return `<span class="inline-field"><b>${escapeHtml(label)}:</b> ${escapeHtml(value)}</span>`;
+}
+
+function section(title: string, body: string) {
+  return `
+    <section class="contract-section">
+      <h2>${escapeHtml(title)}</h2>
+      <div class="section-body">${body}</div>
+    </section>
+  `;
+}
+
+function collectContractData() {
+  return {
+    contractNumber: getInputValue(findInputByLabel("№ договора"), "____"),
+    contractDate: getInputValue(findInputByLabel("Дата"), new Date().toISOString().slice(0, 10)),
+    city: getInputValue(findInputByLabel("Город")),
+    executor: getInputValue(findInputByLabel("Исполнитель")),
+    executorId: getInputValue(findInputByLabel("БИН / ИИН Исполнителя")),
+    executorAddress: getInputValue(findInputByLabel("Адрес Исполнителя")),
+    executorPhone: getInputValue(findInputByLabel("Телефон Исполнителя")),
+    parent: getInputValue(findInputByLabel("Заказчик / родитель")),
+    parentId: getInputValue(findInputByLabel("ИИН Заказчика")),
+    parentPhone: getInputValue(findInputByLabel("Телефон Заказчика")),
+    parentAddress: getInputValue(findInputByLabel("Адрес Заказчика")),
+    student: getInputValue(findInputByPlaceholder("ФИО ученика")),
+    birthDate: getInputValue(findInputByPlaceholder("дд.мм.гггг")),
+    group: getInputValue(findInputByPlaceholder("группа")),
+    course: getInputValue(findInputByPlaceholder("название курса")),
+    schedule: getInputValue(findInputByPlaceholder("дни и время занятий")),
+    amount: getInputValue(findInputByLabel("Сумма оплаты")),
+    paymentDate: getInputValue(findInputByLabel("Дата оплаты")),
+    paymentPeriod: getInputValue(findInputByLabel("Период оплаты")),
+    paymentMethod: getInputValue(findInputByLabel("Способ оплаты")),
+  };
+}
+
+function buildCleanContractHtml() {
+  const data = collectContractData();
+
+  return `
+    <article class="contract">
+      <header class="contract-header">
+        <div class="logo">CS</div>
+        <div>
+          <div class="eyebrow">CRM.Space Contract</div>
+          <h1>Договор оказания образовательных услуг</h1>
+          <p>для центра робототехники и дополнительного образования</p>
+        </div>
+        <div class="contract-meta">
+          ${line("№ договора", data.contractNumber)}
+          ${line("Дата", data.contractDate)}
+          ${line("Город", data.city)}
+        </div>
+      </header>
+
+      <div class="parties">
+        ${field("Исполнитель", data.executor)}
+        ${field("БИН / ИИН Исполнителя", data.executorId)}
+        ${field("Адрес Исполнителя", data.executorAddress)}
+        ${field("Телефон Исполнителя", data.executorPhone)}
+        ${field("Заказчик / родитель", data.parent)}
+        ${field("ИИН Заказчика", data.parentId)}
+        ${field("Телефон Заказчика", data.parentPhone)}
+        ${field("Адрес Заказчика", data.parentAddress)}
+      </div>
+
+      ${section("1. Предмет договора", `
+        <p>1.1. Исполнитель обязуется оказать обучающемуся образовательные услуги по дополнительной программе в сфере робототехники, программирования, инженерного мышления и смежных учебных направлений, а Заказчик обязуется принять и оплатить такие услуги на условиях настоящего договора.</p>
+        <p>1.2. Данные обучающегося: ${line("ФИО ученика", data.student)} ${line("Дата рождения", data.birthDate)} ${line("Группа", data.group)}</p>
+        <p>1.3. Программа/курс: ${line("Курс", data.course)} ${line("Расписание", data.schedule)}</p>
+      `)}
+
+      ${section("2. Стоимость услуг и порядок оплаты", `
+        <div class="payment-box">
+          ${field("Сумма оплаты", data.amount)}
+          ${field("Дата оплаты", data.paymentDate)}
+          ${field("Период оплаты", data.paymentPeriod)}
+          ${field("Способ оплаты", data.paymentMethod)}
+        </div>
+        <p>2.1. Стоимость образовательных услуг указывается в настоящем разделе и/или в приложении к договору, счёте, квитанции, электронном чеке либо ином документе, подтверждающем согласование цены.</p>
+        <p>2.2. Оплата производится Заказчиком не позднее даты оплаты, указанной выше. Обязательство по оплате считается исполненным с момента поступления денежных средств Исполнителю либо выдачи подтверждающего платёжного документа.</p>
+        <p>2.3. При просрочке оплаты Исполнитель вправе временно приостановить оказание услуг до погашения задолженности, предварительно уведомив Заказчика доступным способом связи.</p>
+      `)}
+
+      ${section("3. Права и обязанности сторон", `
+        <p>3.1. Исполнитель обязуется обеспечить проведение занятий квалифицированным ментором, вести учёт посещаемости и информировать Заказчика о существенных изменениях расписания, успеваемости или организационных условий.</p>
+        <p>3.2. Заказчик обязуется своевременно оплачивать услуги, обеспечивать посещение занятий обучающимся, сообщать о пропусках и предоставлять достоверные контактные данные.</p>
+        <p>3.3. Обучающийся обязан соблюдать правила центра, технику безопасности, бережно относиться к оборудованию и уважительно относиться к другим участникам образовательного процесса.</p>
+      `)}
+
+      ${section("4. Посещаемость, переносы и возвраты", `
+        <p>4.1. Пропуск занятия по инициативе Заказчика/обучающегося не освобождает Заказчика от оплаты, если иное письменно не согласовано сторонами или не предусмотрено внутренними правилами Исполнителя.</p>
+        <p>4.2. Перенос занятия допускается при наличии свободного времени, группы или индивидуального согласования. Исполнитель вправе изменить расписание с предварительным уведомлением Заказчика.</p>
+        <p>4.3. Возврат денежных средств производится за фактически не оказанные услуги с учётом использованных занятий, предоставленных скидок, комиссий платёжных систем и письменного заявления Заказчика, если иное не запрещено применимым законодательством.</p>
+      `)}
+
+      ${section("5. Персональные данные и коммуникации", `
+        <p>5.1. Подписывая договор, Заказчик подтверждает согласие на обработку персональных данных Заказчика и обучающегося в целях исполнения договора, ведения CRM, расписания, посещаемости, оплаты, обратной связи и организационных уведомлений.</p>
+        <p>5.2. Уведомления могут направляться через телефон, WhatsApp, электронную почту, CRM.Space или иной согласованный канал связи.</p>
+      `)}
+
+      ${section("6. Ответственность и разрешение споров", `
+        <p>6.1. Стороны несут ответственность за неисполнение или ненадлежащее исполнение обязательств в соответствии с настоящим договором и применимым законодательством Республики Казахстан.</p>
+        <p>6.2. Споры и разногласия стороны стремятся урегулировать путём переговоров. При недостижении соглашения спор подлежит рассмотрению в порядке, установленном применимым законодательством.</p>
+      `)}
+
+      ${section("7. Срок действия договора", `
+        <p>7.1. Договор вступает в силу с даты его подписания сторонами и действует до полного исполнения сторонами своих обязательств.</p>
+        <p>7.2. Договор может быть расторгнут по соглашению сторон либо по инициативе одной из сторон при условии письменного уведомления другой стороны и проведения взаиморасчётов.</p>
+      `)}
+
+      <div class="signatures">
+        <div class="signature-card">
+          <h3>Исполнитель</h3>
+          <p>ФИО <span></span></p>
+          <p>Подпись <span></span></p>
+          <p>Дата <span></span></p>
+        </div>
+        <div class="signature-card">
+          <h3>Заказчик</h3>
+          <p>ФИО <span></span></p>
+          <p>Подпись <span></span></p>
+          <p>Дата <span></span></p>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 export function ContractPdfPrintButton({ label = "PDF и печать" }: { label?: string }) {
   function openPdfPrint() {
-    const content = contractHtmlWithValues();
-    if (!content) {
-      window.print();
-      return;
-    }
-
-    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=980,height=1200");
+    const content = buildCleanContractHtml();
+    const printWindow = window.open("", "_blank", "width=980,height=1200");
     if (!printWindow) {
       window.print();
       return;
@@ -51,161 +184,191 @@ export function ContractPdfPrintButton({ label = "PDF и печать" }: { labe
   <style>
     @page { size: A4 portrait; margin: 12mm; }
     * { box-sizing: border-box; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    body {
-      margin: 0;
-      background: #e2e8f0;
-      color: #0f172a;
-      font-family: Arial, "Helvetica Neue", sans-serif;
-      line-height: 1.45;
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      color: #111827 !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+      line-height: 1.42;
     }
-    .pdf-toolbar {
+    .toolbar {
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 5;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 12px;
       padding: 12px 18px;
-      background: #020617;
-      color: #f8fafc;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+      background: #111827;
+      color: #ffffff;
     }
-    .pdf-toolbar button {
+    .toolbar button {
       border: 0;
       border-radius: 999px;
       background: #ffffff;
-      color: #020617;
-      padding: 10px 18px;
+      color: #111827;
+      padding: 10px 16px;
       font-weight: 800;
       cursor: pointer;
     }
-    .pdf-page {
+    .page {
       width: 210mm;
       min-height: 297mm;
       margin: 18px auto;
-      padding: 0;
       background: #ffffff;
-      box-shadow: 0 22px 80px rgba(15, 23, 42, 0.25);
+      color: #111827;
+      box-shadow: 0 20px 70px rgba(15, 23, 42, 0.18);
     }
-    .contract-paper {
-      width: 100%;
-      max-width: none !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      padding: 13mm !important;
-      background: #ffffff !important;
-      color: #0f172a !important;
-      font-size: 10.5px;
+    .contract {
+      padding: 13mm;
+      font-size: 11px;
+      background: #ffffff;
+      color: #111827;
     }
-    .contract-paper svg { width: 42px; height: 42px; }
-    .contract-paper h1 {
-      margin: 0;
-      font-size: 20px;
-      line-height: 1.15;
+    .contract-header {
+      display: grid;
+      grid-template-columns: 48px 1fr 150px;
+      gap: 12px;
+      align-items: start;
+      border-bottom: 1px solid #d1d5db;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: #e0f2fe;
       color: #0f172a;
+      font-weight: 900;
+      border: 1px solid #bae6fd;
     }
-    .contract-paper h2 {
-      margin: 0;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      background: #e2e8f0 !important;
-      color: #0f172a !important;
+    .eyebrow {
+      color: #0e7490;
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+    h1 {
+      margin: 3px 0 4px;
+      font-size: 20px;
+      line-height: 1.1;
+      color: #111827;
+    }
+    h2 {
+      margin: 0 0 8px;
       padding: 7px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #111827;
       font-size: 12px;
     }
-    .contract-paper h3 { margin: 0; font-size: 12px; color: #0f172a; }
-    .contract-paper p { margin: 0; color: #334155; }
-    .contract-paper section {
-      break-inside: avoid;
-      page-break-inside: avoid;
-      margin-top: 12px;
+    h3 { margin: 0 0 10px; color: #111827; font-size: 12px; }
+    p { margin: 0 0 6px; color: #374151; }
+    .contract-meta {
+      display: grid;
+      gap: 5px;
+      font-size: 9.5px;
     }
-    .contract-paper .grid { display: grid; gap: 10px; }
-    .contract-paper .md\\:grid-cols-2,
-    .contract-paper .md\\:grid-cols-2 {
-      grid-template-columns: 1fr 1fr;
-    }
-    .contract-paper .md\\:flex-row { flex-direction: row; }
-    .contract-paper .md\\:items-start { align-items: flex-start; }
-    .contract-paper .md\\:justify-between { justify-content: space-between; }
-    .contract-paper .flex { display: flex; }
-    .contract-paper .items-center { align-items: center; }
-    .contract-paper .gap-4 { gap: 12px; }
-    .contract-paper .mb-8 { margin-bottom: 18px; }
-    .contract-paper .mt-1 { margin-top: 4px; }
-    .contract-paper .mt-2 { margin-top: 6px; }
-    .contract-paper .mt-3 { margin-top: 8px; }
-    .contract-paper .mt-5 { margin-top: 12px; }
-    .contract-paper .mt-6 { margin-top: 12px; }
-    .contract-paper .mt-8 { margin-top: 18px; }
-    .contract-paper .pb-6 { padding-bottom: 14px; }
-    .contract-paper .pt-6 { padding-top: 14px; }
-    .contract-paper .p-4 { padding: 10px; }
-    .contract-paper .border-b,
-    .contract-paper .border-t { border-color: #e2e8f0; }
-    .contract-paper .rounded-3xl,
-    .contract-paper .rounded-2xl { border-radius: 14px; }
-    .contract-paper .bg-slate-50 { background: #f8fafc; }
-    .contract-paper .bg-cyan-50 { background: #ecfeff; }
-    .contract-paper .border,
-    .contract-paper .border-slate-200,
-    .contract-paper .border-cyan-200 { border: 1px solid #cbd5e1; }
-    .contract-input,
-    .contract-text-input,
-    .contract-sign-line,
-    .contract-inline-field span {
+    .inline-field {
       display: inline-block;
-      min-height: 20px;
-      border: 1px solid #64748b;
-      border-radius: 8px;
+      margin: 0 4px 4px 0;
+      color: #374151;
+    }
+    .inline-field b { color: #111827; }
+    .parties,
+    .payment-box,
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .parties {
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      background: #f9fafb;
+      margin-bottom: 12px;
+    }
+    .payment-box {
+      padding: 9px;
+      border: 1px solid #67e8f9;
+      border-radius: 12px;
+      background: #ecfeff;
+      margin-bottom: 8px;
+    }
+    .field {
+      min-height: 40px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
       background: #ffffff;
       padding: 6px 8px;
-      color: #0f172a;
-      font-weight: 700;
+    }
+    .field-label {
+      color: #6b7280;
+      font-size: 8.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .field-value {
+      margin-top: 3px;
+      color: #111827;
+      font-weight: 800;
       word-break: break-word;
     }
-    .contract-input-strong { border-color: #0891b2; background: #ecfeff; }
-    .contract-text-input {
-      min-width: 120px;
-      border-width: 0 0 1px;
-      border-radius: 0;
-      padding: 0 4px;
+    .contract-section {
+      margin-top: 10px;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
-    .contract-text-input-short { min-width: 70px; }
-    .contract-inline-field {
+    .section-body {
       display: grid;
-      grid-template-columns: 70px 1fr;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      color: #334155;
+      gap: 5px;
     }
-    .contract-sign-line {
-      min-width: 150px;
-      border-width: 0 0 1px;
-      border-radius: 0;
-      padding: 2px 4px;
+    .signatures {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #d1d5db;
+    }
+    .signature-card {
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      padding: 10px;
+      min-height: 118px;
+    }
+    .signature-card span {
+      display: inline-block;
+      min-width: 130px;
+      border-bottom: 1px solid #6b7280;
+      height: 14px;
     }
     @media print {
-      body { background: #ffffff; }
-      .pdf-toolbar { display: none; }
-      .pdf-page { width: auto; min-height: auto; margin: 0; box-shadow: none; }
-      .contract-paper { padding: 0 !important; }
+      .toolbar { display: none !important; }
+      .page {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        box-shadow: none;
+      }
+      .contract { padding: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="pdf-toolbar">
-    <strong>${escapeHtml("PDF версия договора")}</strong>
+  <div class="toolbar">
+    <strong>Белая PDF-версия договора</strong>
     <button onclick="window.print()">Печать / сохранить PDF</button>
   </div>
-  <main class="pdf-page">
-    <section class="contract-paper">${content}</section>
-  </main>
+  <main class="page">${content}</main>
   <script>
-    window.addEventListener("load", () => setTimeout(() => window.print(), 350));
+    window.addEventListener("load", () => setTimeout(() => window.print(), 300));
   </script>
 </body>
 </html>`);
