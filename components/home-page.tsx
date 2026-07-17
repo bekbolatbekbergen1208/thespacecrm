@@ -1,11 +1,7 @@
-"use client";
-
-import { motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
-import { normalizeLocale, translateLiteral, type Locale } from "@/lib/i18n";
+import { translateLiteral, type Locale } from "@/lib/i18n";
 import {
   ArrowRight,
   BarChart3,
@@ -33,11 +29,6 @@ import {
   WalletCards,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0 },
-};
 
 const features = [
   { title: "Customer Management", icon: UsersRound },
@@ -224,12 +215,7 @@ function PhoneMockup({ compact = false }: { compact?: boolean }) {
 
 function HeroVisual() {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.94, rotate: 1 }}
-      animate={{ opacity: 1, scale: 1, rotate: 0 }}
-      transition={{ duration: 0.9, ease: "easeOut" }}
-      className="relative min-h-[590px] lg:min-h-[680px]"
-    >
+    <div className="page-enter relative min-h-[590px] lg:min-h-[680px]">
       <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10" />
       <div className="absolute left-[8%] top-[16%] h-3 w-3 animate-orbit rounded-full bg-cyan-200 shadow-glow" />
       <div className="absolute bottom-[18%] right-[9%] h-2 w-2 animate-pulse rounded-full bg-violet-300 shadow-violet" />
@@ -244,18 +230,12 @@ function HeroVisual() {
       <div className="perspective-phone animate-float pt-14">
         <PhoneMockup />
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-export default function HomePage() {
-  const [locale, setLocale] = useState<Locale>("ru");
+export default function HomePage({ locale }: { locale: Locale }) {
   const tt = (value: string) => translateLiteral(locale, value);
-
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )crm_locale=([^;]+)/);
-    setLocale(normalizeLocale(match ? decodeURIComponent(match[1]) : null));
-  }, []);
 
   return (
     <main className="relative z-10 overflow-hidden">
@@ -287,29 +267,29 @@ export default function HomePage() {
 
       <section className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 pb-20 pt-28 md:pt-32 lg:grid-cols-[1fr_0.9fr] lg:px-8">
         <div className="relative">
-          <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }}>
-            <motion.div variants={fadeUp} className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-sm text-cyan-100">
+          <div className="page-enter">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-sm text-cyan-100">
               <ShieldCheck className="h-4 w-4" />
               {tt("Mobile-first business operating system")}
-            </motion.div>
-            <motion.h1 variants={fadeUp} className="max-w-4xl text-5xl font-black leading-[0.96] tracking-tight text-white sm:text-6xl lg:text-7xl">
+            </div>
+            <h1 className="max-w-4xl text-5xl font-black leading-[0.96] tracking-tight text-white sm:text-6xl lg:text-7xl">
               {tt("Manage Your Entire Business From Your Phone")}
-            </motion.h1>
-            <motion.p variants={fadeUp} className="mt-7 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
+            </h1>
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
               {tt("CRM.Space helps businesses manage customers, employees, tasks, inventory, finances, analytics, and AI automation from a single platform.")}
-            </motion.p>
-            <motion.div variants={fadeUp} className="mt-9 flex flex-col gap-3 sm:flex-row">
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <ButtonLink>{tt("Start Free")}</ButtonLink>
               <ButtonLink variant="secondary" href="#demo">{tt("Watch Demo")}</ButtonLink>
-            </motion.div>
-            <motion.div variants={fadeUp} className="mt-10 grid max-w-xl grid-cols-3 gap-3 text-sm text-slate-300">
+            </div>
+            <div className="mt-10 grid max-w-xl grid-cols-3 gap-3 text-sm text-slate-300">
               {["CRM", "Finance", "AI"].map((item) => (
                 <div key={item} className="rounded-[8px] border border-white/10 bg-white/[0.045] px-4 py-3 text-center">
                   <span className="font-semibold text-white">{item}</span> {tt("in one app")}
                 </div>
               ))}
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </div>
         <HeroVisual />
       </section>
@@ -321,11 +301,10 @@ export default function HomePage() {
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-2">
           {personas.map(({ title, description, icon: Icon }) => (
-            <motion.a
+            <a
               key={title}
               href="/auth"
-              whileHover={{ y: -6 }}
-              className="glass group rounded-[8px] p-7 transition hover:border-cyan-300/35"
+              className="glass group rounded-[8px] p-7 transition hover:-translate-y-1.5 hover:border-cyan-300/35"
             >
               <div className="mb-6 grid h-12 w-12 place-items-center rounded-[8px] bg-white/[0.07] text-cyan-100">
                 <Icon className="h-6 w-6" />
@@ -335,7 +314,7 @@ export default function HomePage() {
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-100">
                 {tt("Continue")} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </span>
-            </motion.a>
+            </a>
           ))}
         </div>
       </section>
@@ -347,18 +326,14 @@ export default function HomePage() {
           <p className="max-w-md leading-7 text-slate-300">{tt("Move from scattered tools to one calm, fast mobile workspace that keeps teams, money, stock, and customers in sync.")}</p>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {features.map(({ title, icon: Icon }, index) => (
-            <motion.div
+          {features.map(({ title, icon: Icon }) => (
+            <div
               key={title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ delay: index * 0.04 }}
               className="glass rounded-[8px] p-5 transition hover:-translate-y-1 hover:border-cyan-300/30"
             >
               <Icon className="h-6 w-6 text-cyan-100" />
               <h3 className="mt-5 text-base font-bold text-white">{tt(title)}</h3>
-            </motion.div>
+            </div>
           ))}
         </div>
       </section>
