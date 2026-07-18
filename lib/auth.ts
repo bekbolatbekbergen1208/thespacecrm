@@ -2,23 +2,6 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
 import type { Role } from "@/lib/supabase/types";
-import type { SubscriptionStatus } from "@/lib/supabase/types";
-
-export type CompanyContext = {
-  id: string;
-  name: string;
-  invite_code: string;
-  business_type: string;
-  dashboard_route: string;
-  country: string;
-  phone: string | null;
-  plan: string;
-  subscription_status?: SubscriptionStatus;
-  subscription_due_date?: string;
-  monthly_fee?: number;
-  blocked_at?: string | null;
-  last_paid_at?: string | null;
-};
 
 export type MembershipContext = {
   id: string;
@@ -26,7 +9,10 @@ export type MembershipContext = {
   position: string | null;
   dashboard_route: string;
   company_id: string;
-  companies: CompanyContext | CompanyContext[] | null;
+  companies:
+    | { id: string; name: string; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }
+    | { id: string; name: string; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }[]
+    | null;
 };
 
 export const getSessionContext = cache(async function getSessionContext() {
@@ -45,7 +31,7 @@ export const getSessionContext = cache(async function getSessionContext() {
 
   const { data: membership } = await supabase
     .from("company_members")
-    .select("id, role, position, dashboard_route, company_id, companies(id, name, invite_code, business_type, dashboard_route, country, phone, plan, subscription_status, subscription_due_date, monthly_fee, blocked_at, last_paid_at)")
+    .select("id, role, position, dashboard_route, company_id, companies(id, name, invite_code, business_type, dashboard_route, country, phone, plan)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -74,25 +60,4 @@ export function canManage(role?: Role) {
 
 export function canAdmin(role?: Role) {
   return role === "founder" || role === "admin";
-}
-
-export function isCompanySubscriptionBlocked(company?: { subscription_status?: SubscriptionStatus; subscription_due_date?: string | null } | null) {
-  if (!company) return false;
-  if (company.subscription_status === "blocked") return true;
-  if (!company.subscription_due_date) return false;
-
-  const today = new Date().toISOString().slice(0, 10);
-  return company.subscription_due_date < today && company.subscription_status !== "active";
-}
-
-export async function requirePlatformAdmin() {
-  const context = await requireUser();
-  const { data: admin } = await context.supabase
-    .from("platform_admins")
-    .select("id, user_id, email, full_name")
-    .eq("user_id", context.user.id)
-    .maybeSingle();
-
-  if (!admin) redirect("/dashboard");
-  return { ...context, admin };
 }

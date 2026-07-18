@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
-import { isCompanySubscriptionBlocked, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { dashboardRouteForStoredIndustry } from "@/lib/industry-dashboard";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import type { Role } from "@/lib/supabase/types";
@@ -10,7 +10,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!membership) redirect("/onboarding");
 
   const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
-  if (isCompanySubscriptionBlocked(company)) redirect("/billing-blocked");
   const dashboardRoute = membership.dashboard_route || company?.dashboard_route || dashboardRouteForStoredIndustry(company?.business_type);
 
   return (
