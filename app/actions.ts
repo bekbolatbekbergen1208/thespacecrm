@@ -231,6 +231,73 @@ export async function signUpFounder(formData: FormData) {
   redirect(dashboardRouteForIndustry(input.businessType));
 }
 
+export async function updatePlatformCompanyBilling(formData: FormData) {
+  const { supabase, user } = await requirePlatformAdminAction();
+  const schema = z.object({
+    companyId: z.string().uuid(),
+    subscriptionStatus: z.enum(["trial", "active", "past_due", "blocked"]),
+    plan: z.string().min(1).default("Monthly"),
+    monthlyFee: z.coerce.number().min(0).default(0),
+    subscriptionDueDate: z.string().min(4),
+    paymentAmount: z.coerce.number().min(0).default(0),
+    paymentMethod: z.string().default("manual"),
+    notes: z.string().optional(),
+  });
+  const input = parseOrRedirect(schema, {
+    companyId: value(formData, "companyId"),
+    subscriptionStatus: value(formData, "subscriptionStatus"),
+    plan: value(formData, "plan") || "Monthly",
+    monthlyFee: numberValue(formData, "monthlyFee"),
+    subscriptionDueDate: value(formData, "subscriptionDueDate"),
+    paymentAmount: numberValue(formData, "paymentAmount"),
+    paymentMethod: value(formData, "paymentMethod") || "manual",
+    notes: value(formData, "notes"),
+  }, "/admin");
+
+  const { error } = await supabase
+    .from("companies")
+    .update({
+      plan: input.plan,
+      monthly_fee: input.monthlyFee,
+      subscription_status: input.subscriptionStatus,
+      subscription_due_date: input.subscriptionDueDate,
+      blocked_at: input.subscriptionStatus === "blocked" ? new Date().toISOString() : null,
+      last_paid_at: input.paymentAmount > 0 ? new Date().toISOString() : undefined,
+    })
+    .eq("id", input.companyId);
+
+  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+
+  if (input.paymentAmount > 0) {
+    const { error: paymentError } = await supabase.from("platform_subscription_payments").insert({
+      company_id: input.companyId,
+      amount: input.paymentAmount,
+      paid_at: new Date().toISOString().slice(0, 10),
+      period_end: input.subscriptionDueDate,
+      method: input.paymentMethod,
+      notes: input.notes || null,
+      recorded_by: user.id,
+    });
+    if (paymentError) redirect(`/admin?error=${encodeURIComponent(paymentError.message)}`);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+  redirect("/admin?saved=billing");
+}
+
+async function requirePlatformAdminAction() {
+  const context = await requireUser();
+  const { data: admin } = await context.supabase
+    .from("platform_admins")
+    .select("id")
+    .eq("user_id", context.user.id)
+    .maybeSingle();
+
+  if (!admin) redirect("/dashboard");
+  return context;
+}
+
 export async function signUpEmployee(formData: FormData) {
   ensureSupabase();
   const schema = z.object({

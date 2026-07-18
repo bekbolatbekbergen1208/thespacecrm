@@ -21,6 +21,7 @@ export default async function LoginPage({
           <p>New to CRM.Space? <Link className="text-cyan-100" href="/signup">Create an account</Link></p>
           <p>Mentor account? <Link className="text-cyan-100" href="/signup/mentor">Request mentor access</Link></p>
           <p>Already registered without a company? <Link className="text-cyan-100" href="/onboarding">Choose your role</Link></p>
+          <p>CRM.Space owner? <Link className="text-cyan-100" href="/admin">Open admin panel</Link></p>
         </div>
       }
     >

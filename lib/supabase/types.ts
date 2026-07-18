@@ -1,6 +1,7 @@
 export type Role = "founder" | "admin" | "manager" | "employee";
 export type TaskStatus = "todo" | "in_progress" | "done";
 export type AccessRequestStatus = "pending" | "approved" | "rejected";
+export type SubscriptionStatus = "trial" | "active" | "past_due" | "blocked";
 
 type RoboticsValue = string | number | null;
 type RoboticsTable = {
@@ -56,6 +57,11 @@ export type Database = {
           country: string;
           phone: string | null;
           plan: string;
+          subscription_status: SubscriptionStatus;
+          subscription_due_date: string;
+          monthly_fee: number;
+          blocked_at: string | null;
+          last_paid_at: string | null;
           invite_code: string;
           created_by: string;
           created_at: string;
@@ -68,6 +74,11 @@ export type Database = {
           country?: string;
           phone?: string | null;
           plan?: string;
+          subscription_status?: SubscriptionStatus;
+          subscription_due_date?: string;
+          monthly_fee?: number;
+          blocked_at?: string | null;
+          last_paid_at?: string | null;
           invite_code?: string;
           created_by: string;
           created_at?: string;
@@ -79,7 +90,69 @@ export type Database = {
           country?: string;
           phone?: string | null;
           plan?: string;
+          subscription_status?: SubscriptionStatus;
+          subscription_due_date?: string;
+          monthly_fee?: number;
+          blocked_at?: string | null;
+          last_paid_at?: string | null;
           invite_code?: string;
+        };
+        Relationships: [];
+      };
+      platform_admins: {
+        Row: {
+          id: string;
+          user_id: string;
+          email: string;
+          full_name: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          email: string;
+          full_name?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          email?: string;
+          full_name?: string | null;
+        };
+        Relationships: [];
+      };
+      platform_subscription_payments: {
+        Row: {
+          id: string;
+          company_id: string;
+          amount: number;
+          paid_at: string;
+          period_start: string | null;
+          period_end: string | null;
+          method: string;
+          notes: string | null;
+          recorded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          amount?: number;
+          paid_at?: string;
+          period_start?: string | null;
+          period_end?: string | null;
+          method?: string;
+          notes?: string | null;
+          recorded_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          amount?: number;
+          paid_at?: string;
+          period_start?: string | null;
+          period_end?: string | null;
+          method?: string;
+          notes?: string | null;
+          recorded_by?: string | null;
         };
         Relationships: [];
       };

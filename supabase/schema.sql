@@ -3,6 +3,12 @@ create extension if not exists pgcrypto;
 create type public.member_role as enum ('founder', 'admin', 'manager', 'employee');
 create type public.task_status as enum ('todo', 'in_progress', 'done');
 create type public.access_request_status as enum ('pending', 'approved', 'rejected');
+do $$
+begin
+  create type public.subscription_status as enum ('trial', 'active', 'past_due', 'blocked');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -20,8 +26,40 @@ create table public.companies (
   country text not null default 'United States',
   phone text,
   plan text not null default 'Free',
+  subscription_status public.subscription_status not null default 'trial',
+  subscription_due_date date not null default (current_date + interval '14 days'),
+  monthly_fee numeric(12,2) not null default 0,
+  blocked_at timestamptz,
+  last_paid_at timestamptz,
   invite_code text not null unique default upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
   created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.companies add column if not exists subscription_status public.subscription_status not null default 'trial';
+alter table public.companies add column if not exists subscription_due_date date not null default (current_date + interval '14 days');
+alter table public.companies add column if not exists monthly_fee numeric(12,2) not null default 0;
+alter table public.companies add column if not exists blocked_at timestamptz;
+alter table public.companies add column if not exists last_paid_at timestamptz;
+
+create table if not exists public.platform_admins (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  email text not null,
+  full_name text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.platform_subscription_payments (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  amount numeric(12,2) not null default 0,
+  paid_at date not null default current_date,
+  period_start date,
+  period_end date,
+  method text not null default 'manual',
+  notes text,
+  recorded_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -140,6 +178,19 @@ as $$
   );
 $$;
 
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.platform_admins
+    where user_id = auth.uid()
+  );
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -170,17 +221,23 @@ alter table public.customers enable row level security;
 alter table public.employees enable row level security;
 alter table public.tasks enable row level security;
 alter table public.inventory_items enable row level security;
+alter table public.platform_admins enable row level security;
+alter table public.platform_subscription_payments enable row level security;
 
 create policy "Users can read own profile" on public.profiles for select using (id = auth.uid());
 create policy "Company members can read peer profiles" on public.profiles for select using (public.shares_company_with_user(id));
+create policy "Platform admins can read profiles" on public.profiles for select using (public.is_platform_admin());
 create policy "Users can update own profile" on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
 
 create policy "Members can read companies" on public.companies for select using (public.is_company_member(id));
+create policy "Platform admins can read companies" on public.companies for select using (public.is_platform_admin());
 create policy "Authenticated users can find companies to join" on public.companies for select using (auth.role() = 'authenticated');
 create policy "Authenticated users can create company" on public.companies for insert with check (created_by = auth.uid());
 create policy "Admins can update company" on public.companies for update using (public.has_company_role(id, array['founder','admin']::public.member_role[]));
+create policy "Platform admins can update companies" on public.companies for update using (public.is_platform_admin()) with check (public.is_platform_admin());
 
 create policy "Members can read memberships" on public.company_members for select using (public.is_company_member(company_id) or user_id = auth.uid());
+create policy "Platform admins can read memberships" on public.company_members for select using (public.is_platform_admin());
 create policy "Users can join companies" on public.company_members for insert with check (user_id = auth.uid());
 create policy "Managers can approve memberships" on public.company_members for insert with check (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 create policy "Admins can update memberships" on public.company_members for update using (public.has_company_role(company_id, array['founder','admin']::public.member_role[]));
@@ -232,3 +289,23 @@ create policy "Members can read inventory" on public.inventory_items for select 
 create policy "Managers can create inventory" on public.inventory_items for insert with check (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 create policy "Managers can update inventory" on public.inventory_items for update using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 create policy "Managers can delete inventory" on public.inventory_items for delete using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
+
+create policy "Platform admins can read admin list" on public.platform_admins for select using (user_id = auth.uid() or public.is_platform_admin());
+
+create policy "Platform admins can read subscription payments" on public.platform_subscription_payments for select using (public.is_platform_admin());
+create policy "Platform admins can insert subscription payments" on public.platform_subscription_payments for insert with check (public.is_platform_admin());
+create policy "Platform admins can update subscription payments" on public.platform_subscription_payments for update using (public.is_platform_admin()) with check (public.is_platform_admin());
+create policy "Platform admins can delete subscription payments" on public.platform_subscription_payments for delete using (public.is_platform_admin());
+
+create index if not exists companies_subscription_status_due_idx
+on public.companies (subscription_status, subscription_due_date);
+
+create index if not exists platform_subscription_payments_company_paid_idx
+on public.platform_subscription_payments (company_id, paid_at desc);
+
+-- После создания вашего аккаунта вставьте себя как владельца платформы:
+-- insert into public.platform_admins (user_id, email, full_name)
+-- select id, email, coalesce(raw_user_meta_data->>'full_name', email)
+-- from auth.users
+-- where email = 'YOUR_ADMIN_EMAIL@example.com'
+-- on conflict (user_id) do nothing;
