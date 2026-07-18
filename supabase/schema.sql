@@ -1,8 +1,23 @@
 create extension if not exists pgcrypto;
 
-create type public.member_role as enum ('founder', 'admin', 'manager', 'employee');
-create type public.task_status as enum ('todo', 'in_progress', 'done');
-create type public.access_request_status as enum ('pending', 'approved', 'rejected');
+do $$
+begin
+  create type public.member_role as enum ('founder', 'admin', 'manager', 'employee');
+exception
+  when duplicate_object then null;
+end $$;
+do $$
+begin
+  create type public.task_status as enum ('todo', 'in_progress', 'done');
+exception
+  when duplicate_object then null;
+end $$;
+do $$
+begin
+  create type public.access_request_status as enum ('pending', 'approved', 'rejected');
+exception
+  when duplicate_object then null;
+end $$;
 do $$
 begin
   create type public.subscription_status as enum ('trial', 'active', 'past_due', 'blocked');
@@ -10,7 +25,7 @@ exception
   when duplicate_object then null;
 end $$;
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   phone text,
@@ -18,7 +33,7 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
-create table public.companies (
+create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   business_type text not null default 'Other',
@@ -63,7 +78,7 @@ create table if not exists public.platform_subscription_payments (
   created_at timestamptz not null default now()
 );
 
-create table public.company_members (
+create table if not exists public.company_members (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -74,7 +89,7 @@ create table public.company_members (
   unique(company_id, user_id)
 );
 
-create table public.employee_access_requests (
+create table if not exists public.employee_access_requests (
   id uuid primary key default gen_random_uuid(),
   company_id uuid references public.companies(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -88,7 +103,7 @@ create table public.employee_access_requests (
   created_at timestamptz not null default now()
 );
 
-create table public.customers (
+create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   name text not null,
@@ -99,7 +114,7 @@ create table public.customers (
   created_at timestamptz not null default now()
 );
 
-create table public.employees (
+create table if not exists public.employees (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   name text not null,
@@ -112,7 +127,7 @@ create table public.employees (
   unique(company_id, user_id)
 );
 
-create table public.tasks (
+create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   title text not null,
@@ -123,7 +138,7 @@ create table public.tasks (
   created_at timestamptz not null default now()
 );
 
-create table public.inventory_items (
+create table if not exists public.inventory_items (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   name text not null,
@@ -209,6 +224,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute procedure public.handle_new_user();
@@ -223,6 +239,59 @@ alter table public.tasks enable row level security;
 alter table public.inventory_items enable row level security;
 alter table public.platform_admins enable row level security;
 alter table public.platform_subscription_payments enable row level security;
+
+drop policy if exists "Users can read own profile" on public.profiles;
+drop policy if exists "Company members can read peer profiles" on public.profiles;
+drop policy if exists "Platform admins can read profiles" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+
+drop policy if exists "Members can read companies" on public.companies;
+drop policy if exists "Platform admins can read companies" on public.companies;
+drop policy if exists "Authenticated users can find companies to join" on public.companies;
+drop policy if exists "Authenticated users can create company" on public.companies;
+drop policy if exists "Admins can update company" on public.companies;
+drop policy if exists "Platform admins can update companies" on public.companies;
+
+drop policy if exists "Members can read memberships" on public.company_members;
+drop policy if exists "Platform admins can read memberships" on public.company_members;
+drop policy if exists "Users can join companies" on public.company_members;
+drop policy if exists "Managers can approve memberships" on public.company_members;
+drop policy if exists "Admins can update memberships" on public.company_members;
+drop policy if exists "Admins can delete memberships" on public.company_members;
+
+drop policy if exists "Users can create own access requests" on public.employee_access_requests;
+drop policy if exists "Users can read own access requests" on public.employee_access_requests;
+drop policy if exists "Managers can read access requests" on public.employee_access_requests;
+drop policy if exists "Managers can update access requests" on public.employee_access_requests;
+
+drop policy if exists "Members can read customers" on public.customers;
+drop policy if exists "Managers can create customers" on public.customers;
+drop policy if exists "Managers can update customers" on public.customers;
+drop policy if exists "Managers can delete customers" on public.customers;
+
+drop policy if exists "Members can read employees" on public.employees;
+drop policy if exists "Admins can create employees" on public.employees;
+drop policy if exists "Managers can create approved employees" on public.employees;
+drop policy if exists "Members can create own employee record" on public.employees;
+drop policy if exists "Managers can update employees" on public.employees;
+drop policy if exists "Managers can delete employees" on public.employees;
+
+drop policy if exists "Members can read tasks" on public.tasks;
+drop policy if exists "Managers can create tasks" on public.tasks;
+drop policy if exists "Managers can update tasks" on public.tasks;
+drop policy if exists "Managers can delete tasks" on public.tasks;
+
+drop policy if exists "Members can read inventory" on public.inventory_items;
+drop policy if exists "Managers can create inventory" on public.inventory_items;
+drop policy if exists "Managers can update inventory" on public.inventory_items;
+drop policy if exists "Managers can delete inventory" on public.inventory_items;
+
+drop policy if exists "Platform admins can read admin list" on public.platform_admins;
+
+drop policy if exists "Platform admins can read subscription payments" on public.platform_subscription_payments;
+drop policy if exists "Platform admins can insert subscription payments" on public.platform_subscription_payments;
+drop policy if exists "Platform admins can update subscription payments" on public.platform_subscription_payments;
+drop policy if exists "Platform admins can delete subscription payments" on public.platform_subscription_payments;
 
 create policy "Users can read own profile" on public.profiles for select using (id = auth.uid());
 create policy "Company members can read peer profiles" on public.profiles for select using (public.shares_company_with_user(id));
