@@ -16,7 +16,7 @@ import { PaymentReminderLink } from "@/components/app/payment-reminder-link";
 import { RoboticsExportButtons } from "@/components/app/robotics-export-buttons";
 import { RoboticsRecordForm } from "@/components/app/robotics-record-form";
 import { SmallButton } from "@/components/app/forms";
-import { requireUser } from "@/lib/auth";
+import { requireMembership } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import { getRoboticsModule, type RoboticsModuleKey } from "@/lib/robotics-crm";
@@ -37,7 +37,7 @@ export async function RoboticsModulePage({
   searchParams?: Promise<{ error?: string; q?: string; status?: string; group?: string; mentor?: string; room?: string; date?: string; view?: "day" | "week" | "month"; sort?: string; order?: "asc" | "desc" }>;
 }) {
   const [{ supabase, membership }, params, t, locale] = await Promise.all([
-    requireUser(),
+    requireMembership(),
     searchParams ?? Promise.resolve({} as { error?: string; q?: string; status?: string; group?: string; mentor?: string; room?: string; date?: string; view?: "day" | "week" | "month"; sort?: string; order?: "asc" | "desc" }),
     getServerDictionary(),
     getServerLocale(),

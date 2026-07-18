@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireMembership } from "@/lib/auth";
 
 type RetailRow = {
   id: string;
@@ -55,7 +55,7 @@ function buildCsv(sales: RetailRow[], products: RetailRow[]) {
 }
 
 export async function GET(request: NextRequest) {
-  const { supabase, membership } = await requireUser();
+  const { supabase, membership } = await requireMembership();
   if (!membership) {
     return NextResponse.json({ error: "No company workspace" }, { status: 403 });
   }

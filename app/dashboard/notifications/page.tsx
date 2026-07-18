@@ -1,10 +1,10 @@
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
-import { canManage, requireUser } from "@/lib/auth";
+import { canManage, requireMembership } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 
 export default async function NotificationsPage() {
-  const [{ supabase, membership, user }, locale] = await Promise.all([requireUser(), getServerLocale()]);
+  const [{ supabase, membership, user }, locale] = await Promise.all([requireMembership(), getServerLocale()]);
   const tt = (value: string) => translateLiteral(locale, value);
   const companyId = membership!.company_id;
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;

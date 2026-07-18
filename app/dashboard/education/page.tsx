@@ -2,7 +2,7 @@ import Link from "next/link";
 import { seedRoboticsDemoData } from "@/app/actions";
 import { Card, PageHeader } from "@/components/app/app-shell";
 import { LazyRoboticsCharts } from "@/components/app/lazy-robotics-charts";
-import { requireUser } from "@/lib/auth";
+import { requireMembership } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import { roboticsModuleList } from "@/lib/robotics-crm";
@@ -13,7 +13,7 @@ export default async function EducationDashboardPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ supabase, membership }, params, t, locale] = await Promise.all([requireUser(), searchParams, getServerDictionary(), getServerLocale()]);
+  const [{ supabase, membership }, params, t, locale] = await Promise.all([requireMembership(), searchParams, getServerDictionary(), getServerLocale()]);
   const companyId = membership!.company_id;
   const today = new Date().toISOString().slice(0, 10);
   const month = today.slice(0, 7);

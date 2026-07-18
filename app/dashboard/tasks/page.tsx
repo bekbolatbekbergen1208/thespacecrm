@@ -1,12 +1,12 @@
 import { deleteTask, saveTask } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
-import { canManage, requireUser } from "@/lib/auth";
+import { canManage, requireMembership } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 
 export default async function TasksPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const [{ supabase, membership, user }, params, locale] = await Promise.all([requireUser(), searchParams, getServerLocale()]);
+  const [{ supabase, membership, user }, params, locale] = await Promise.all([requireMembership(), searchParams, getServerLocale()]);
   const tt = (value: string) => translateLiteral(locale, value);
   const companyId = membership!.company_id;
   const editable = canManage(membership!.role);

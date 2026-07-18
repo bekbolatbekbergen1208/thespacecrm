@@ -2,7 +2,7 @@ import { deleteRoboticsRecord, saveRoboticsRecord } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { RoboticsRecordForm } from "@/components/app/robotics-record-form";
 import { SmallButton } from "@/components/app/forms";
-import { requireUser } from "@/lib/auth";
+import { requireMembership } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import { getRoboticsModule, type RoboticsModuleKey } from "@/lib/robotics-crm";
@@ -23,7 +23,7 @@ export async function RoboticsSimpleModulePage({
   searchParams?: Promise<{ error?: string; q?: string; status?: string; group?: string; mentor?: string; sort?: string; order?: "asc" | "desc" }>;
 }) {
   const [{ supabase, membership }, params, t, locale] = await Promise.all([
-    requireUser(),
+    requireMembership(),
     searchParams ?? Promise.resolve({} as { error?: string; q?: string; status?: string; group?: string; mentor?: string; sort?: string; order?: "asc" | "desc" }),
     getServerDictionary(),
     getServerLocale(),
@@ -165,7 +165,7 @@ async function loadSimpleDirectories({
   fields,
   rows,
 }: {
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"];
+  supabase: Awaited<ReturnType<typeof requireMembership>>["supabase"];
   companyId: string;
   moduleKey: RoboticsModuleKey;
   fields: ReturnType<typeof getRoboticsModule>["fields"];
