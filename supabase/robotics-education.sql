@@ -97,11 +97,16 @@ create table if not exists public.bakery_shops (
   company_id uuid not null references public.companies(id) on delete cascade,
   name text not null,
   address text,
+  latitude numeric(10,7),
+  longitude numeric(10,7),
   phone text,
   driver_name text,
   notes text,
   created_at timestamptz not null default now()
 );
+
+alter table public.bakery_shops add column if not exists latitude numeric(10,7);
+alter table public.bakery_shops add column if not exists longitude numeric(10,7);
 
 create table if not exists public.bakery_stock (
   id uuid primary key default gen_random_uuid(),

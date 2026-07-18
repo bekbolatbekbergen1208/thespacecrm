@@ -529,6 +529,8 @@ export async function saveBakeryShop(formData: FormData) {
   const payload = {
     name: z.string().min(2).parse(value(formData, "name")),
     address: value(formData, "address") || null,
+    latitude: value(formData, "latitude") ? numberValue(formData, "latitude") : null,
+    longitude: value(formData, "longitude") ? numberValue(formData, "longitude") : null,
     phone: value(formData, "phone") || null,
     driver_name: value(formData, "driverName") || null,
     notes: value(formData, "notes") || null,

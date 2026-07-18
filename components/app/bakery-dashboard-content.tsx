@@ -740,7 +740,7 @@ export async function BakeryDashboardContent({
               Служба доставки
             </p>
             <h2 className="mt-1 text-xl font-black text-white">Авто, водители и маршруты по адресам магазинов</h2>
-            <p className="mt-1 text-sm text-slate-400">Выберите магазины, и CRM соберёт маршрут из их адресов. Кнопка Maps откроет путь в Google Maps.</p>
+            <p className="mt-1 text-sm text-slate-400">Выберите магазины, и CRM соберёт маршрут для водителя. 2GIS строит точный путь по координатам, Maps работает по адресам.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
@@ -807,6 +807,9 @@ export async function BakeryDashboardContent({
                         <span>
                           <span className="block font-black text-white">{String(shop.name ?? "Магазин")}</span>
                           <span className="mt-1 block text-xs text-slate-500">{String(shop.address ?? "Адрес не указан")}</span>
+                          <span className={`mt-1 block text-[11px] font-black ${hasShopCoordinates(shop) ? "text-cyan-100" : "text-yellow-100"}`}>
+                            {hasShopCoordinates(shop) ? "2GIS координаты есть" : "Нет координат, будет поиск по адресу"}
+                          </span>
                         </span>
                       </label>
                     ))}
@@ -848,8 +851,11 @@ export async function BakeryDashboardContent({
               {!dayRoutes.length && <EmptyState text="На выбранный день маршрутов нет." />}
               {dayRoutes.map((route) => {
                 const routeShops = shopsForRoute(route, allShopRows);
+                const optimizedRouteShops = optimizeRouteShops(routeShops);
                 const vehicle = vehicleRows.find((item) => item.id === route.vehicle_id);
-                const mapsHref = googleMapsRouteHref(routeShops);
+                const mapsHref = googleMapsRouteHref(optimizedRouteShops);
+                const dgisHref = twoGisRouteHref(optimizedRouteShops);
+                const dgisSearchHref = twoGisSearchHref(optimizedRouteShops);
                 return (
                   <details key={route.id} className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4">
                     <summary className="cursor-pointer list-none">
@@ -863,14 +869,37 @@ export async function BakeryDashboardContent({
                     </summary>
                     <div className="mt-4 border-t border-white/10 pt-4">
                       <div className="grid gap-2">
-                        {routeShops.map((shop, index) => (
+                        {optimizedRouteShops.map((shop, index) => (
                           <div key={shop.id} className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
-                            <p className="font-black text-white">#{index + 1} {String(shop.name ?? "Магазин")}</p>
-                            <p className="mt-1 text-xs text-slate-500">{String(shop.address ?? "Адрес не указан")}</p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="font-black text-white">#{index + 1} {String(shop.name ?? "Магазин")}</p>
+                                <p className="mt-1 text-xs text-slate-500">{String(shop.address ?? "Адрес не указан")}</p>
+                                {hasShopCoordinates(shop) && (
+                                  <p className="mt-1 text-[11px] font-semibold text-cyan-100/80">
+                                    2GIS: {String(shop.latitude)}, {String(shop.longitude)}
+                                  </p>
+                                )}
+                              </div>
+                              <a href={twoGisShopHref(shop)} target="_blank" rel="noreferrer" className="w-fit rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/15">
+                                2GIS точка
+                              </a>
+                            </div>
                           </div>
                         ))}
                       </div>
+                      {routeShops.length > 1 && (
+                        <p className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-xs font-semibold leading-5 text-cyan-50">
+                          CRM поставила точки в рекомендованном порядке. Если у всех точек есть координаты, 2GIS откроет маршрут сразу.
+                        </p>
+                      )}
                       <div className="mt-4 flex flex-wrap gap-2">
+                        {dgisHref || dgisSearchHref ? (
+                          <a href={dgisHref || dgisSearchHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-3 py-1.5 text-xs font-black text-cyan-950 transition hover:bg-cyan-200">
+                            <MapPinned className="h-3.5 w-3.5" />
+                            Открыть 2GIS
+                          </a>
+                        ) : null}
                         {mapsHref ? (
                           <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950 transition hover:bg-cyan-50">
                             <MapPinned className="h-3.5 w-3.5" />
@@ -978,6 +1007,11 @@ export async function BakeryDashboardContent({
               <Field label="Телефон" name="phone" required={false} />
               <Field label="Адрес" name="address" required={false} />
               <Field label="Водитель" name="driverName" required={false} />
+              <Field label="Широта для 2GIS" name="latitude" type="number" required={false} />
+              <Field label="Долгота для 2GIS" name="longitude" type="number" required={false} />
+              <p className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-xs font-semibold leading-5 text-cyan-50 md:col-span-2">
+                Для точного маршрута откройте точку в 2GIS, скопируйте координаты и вставьте широту/долготу. Если координат нет, CRM откроет поиск по адресу.
+              </p>
               <div className="md:col-span-2"><Textarea label="Заметки" name="notes" /></div>
               <div className="md:col-span-2"><SmallButton>Добавить магазин</SmallButton></div>
             </form>
@@ -1001,6 +1035,10 @@ export async function BakeryDashboardContent({
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Магазин</p>
                     <h2 className="mt-2 text-2xl font-black text-white">{String(shop.name ?? "Магазин")}</h2>
                     <p className="mt-1 text-sm text-slate-400">{String(shop.address ?? "Адрес не указан")} • {String(shop.driver_name ?? "Водитель не указан")}</p>
+                    <a href={twoGisShopHref(shop)} target="_blank" rel="noreferrer" className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/15">
+                      <MapPinned className="h-3.5 w-3.5" />
+                      Открыть 2GIS
+                    </a>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-4">
                     <MiniPill label="За день" value={`${dayShopTotal.expected.toLocaleString()} ₸`} />
@@ -1557,6 +1595,89 @@ function shopsForRoute(route: BakeryRow, shops: BakeryRow[]) {
   return ids
     .map((id) => shops.find((shop) => shop.id === id))
     .filter((shop): shop is BakeryRow => Boolean(shop));
+}
+
+function shopCoordinates(shop: BakeryRow) {
+  const latitude = Number(shop.latitude);
+  const longitude = Number(shop.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  return { latitude, longitude };
+}
+
+function hasShopCoordinates(shop: BakeryRow) {
+  return Boolean(shopCoordinates(shop));
+}
+
+function distanceBetweenShops(from: BakeryRow, to: BakeryRow) {
+  const a = shopCoordinates(from);
+  const b = shopCoordinates(to);
+  if (!a || !b) return Number.POSITIVE_INFINITY;
+  const lat = a.latitude - b.latitude;
+  const lon = a.longitude - b.longitude;
+  return lat * lat + lon * lon;
+}
+
+function optimizeRouteShops(shops: BakeryRow[]) {
+  const withCoordinates = shops.filter(hasShopCoordinates);
+  if (withCoordinates.length < 3) return shops;
+
+  const remaining = [...shops];
+  const route: BakeryRow[] = [];
+  const firstWithCoordinatesIndex = remaining.findIndex(hasShopCoordinates);
+  route.push(remaining.splice(Math.max(0, firstWithCoordinatesIndex), 1)[0]);
+
+  while (remaining.length) {
+    const current = route[route.length - 1];
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (let index = 0; index < remaining.length; index += 1) {
+      const distance = distanceBetweenShops(current, remaining[index]);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    }
+
+    route.push(remaining.splice(bestIndex, 1)[0]);
+  }
+
+  return route;
+}
+
+function twoGisRouteHref(shops: BakeryRow[]) {
+  const points = shops
+    .map(shopCoordinates)
+    .filter((point): point is { latitude: number; longitude: number } => Boolean(point))
+    .slice(0, 10);
+
+  if (!points.length) return "";
+  if (points.length === 1) {
+    const point = points[0];
+    return `https://2gis.kz/search/${encodeURIComponent(`${point.longitude},${point.latitude}`)}`;
+  }
+
+  return `https://2gis.kz/directions/tab/car/points/${points
+    .map((point) => `${point.longitude},${point.latitude}`)
+    .join("|")}`;
+}
+
+function twoGisSearchHref(shops: BakeryRow[]) {
+  const addresses = shops
+    .map((shop) => String(shop.address ?? "").trim())
+    .filter(Boolean);
+  if (!addresses.length) return "";
+  return `https://2gis.kz/search/${encodeURIComponent(addresses.join(" -> "))}`;
+}
+
+function twoGisShopHref(shop: BakeryRow) {
+  const coordinates = shopCoordinates(shop);
+  if (coordinates) {
+    return `https://2gis.kz/search/${encodeURIComponent(`${coordinates.longitude},${coordinates.latitude}`)}`;
+  }
+  const address = String(shop.address ?? shop.name ?? "").trim();
+  return address ? `https://2gis.kz/search/${encodeURIComponent(address)}` : "https://2gis.kz";
 }
 
 function googleMapsRouteHref(shops: BakeryRow[]) {
