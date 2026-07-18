@@ -137,17 +137,14 @@ export async function RetailDashboardContent({
   const saleSummaryByProduct = buildSaleSummaryByProduct(saleRows);
   const needsProductRows = showProducts || showReports || showAssistant;
   const productRows = needsProductRows
-    ? activeProducts.filter((product) => {
-        const text = [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
-        const categoryText = String(product.category ?? "").toLowerCase();
-        const addressText = String(product.address ?? "").toLowerCase();
-        const photoText = [product.photo_keywords, product.photo_url].join(" ").toLowerCase();
-        return (!query || text.includes(query))
-          && (!categoryQuery || categoryText.includes(categoryQuery))
-          && (!addressQuery || addressText.includes(addressQuery))
-          && (!photoQuery || photoText.includes(photoQuery));
-      })
+    ? rankRetailProducts(
+        activeProducts.filter((product) => matchesRetailProductFilters(product, { query, categoryQuery, addressQuery, photoQuery })),
+        photoQuery,
+      )
     : activeProducts;
+  const similarPhotoProducts = showProducts && photoQuery
+    ? buildSimilarPhotoProducts(activeProducts, photoQuery, saleSummaryByProduct).slice(0, 6)
+    : [];
   const needsSummaries = showProducts || showReports || showAssistant;
   const summaries = needsSummaries ? productRows.map((product) => summarizeProduct(product, saleSummaryByProduct)) : [];
   const needsDaySales = showCalendar || showReports || showAssistant;
@@ -449,6 +446,37 @@ export async function RetailDashboardContent({
               />
             </div>
           </div>
+          {similarPhotoProducts.length > 0 && (
+            <div className="mb-4 rounded-3xl border border-cyan-300/20 bg-cyan-300/[0.07] p-4">
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">AI фото-поиск</p>
+                  <h3 className="mt-1 text-lg font-black text-white">Похожие варианты</h3>
+                </div>
+                <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">
+                  {similarPhotoProducts.length} найдено
+                </span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {similarPhotoProducts.map(({ product, score, remaining }) => (
+                  <div key={product.id} className="flex gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+                    <ProductPhoto src={String(product.photo_url ?? "")} name={String(product.name ?? "Товар")} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-black text-white">{product.name}</p>
+                      <p className="truncate text-xs text-slate-400">{product.category || "Без категории"}</p>
+                      {product.address && <p className="mt-1 truncate text-xs text-cyan-100/80">{product.address}</p>}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[11px] font-black text-cyan-100">{score}% похоже</span>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${remaining <= 0 ? "bg-red-500 text-white" : remaining <= 3 ? "bg-yellow-300 text-yellow-950" : "bg-emerald-300 text-emerald-950"}`}>
+                          {remaining} шт
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {productRows.length ? (
             <>
               <div className="overflow-hidden rounded-3xl border border-white/10">
@@ -1185,6 +1213,103 @@ function retailPageHref(sectionPath: string, params: RetailSearchParams, page: n
   return queryString ? `${sectionPath}?${queryString}` : sectionPath;
 }
 
+function retailSearchTokens(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .toLowerCase()
+        .replace(/^ai-photo\s*/, "")
+        .replace(/data:image\/[a-z]+;base64,[a-z0-9+/=]+/gi, " ")
+        .split(/[^a-zа-яёәғқңөұүһі0-9]+/i)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 2 && token !== "ai" && token !== "photo"),
+    ),
+  ).slice(0, 16);
+}
+
+function retailProductSearchText(product: RetailRow) {
+  return [product.name, product.category, product.address, product.photo_keywords, product.notes, product.photo_url]
+    .join(" ")
+    .toLowerCase();
+}
+
+function matchesRetailProductFilters(
+  product: RetailRow,
+  {
+    query,
+    categoryQuery,
+    addressQuery,
+    photoQuery,
+  }: {
+    query: string;
+    categoryQuery: string;
+    addressQuery: string;
+    photoQuery: string;
+  },
+) {
+  const text = retailProductSearchText(product);
+  const categoryText = String(product.category ?? "").toLowerCase();
+  const addressText = String(product.address ?? "").toLowerCase();
+
+  if (query && !text.includes(query)) return false;
+  if (categoryQuery && !categoryText.includes(categoryQuery)) return false;
+  if (addressQuery && !addressText.includes(addressQuery)) return false;
+  if (!photoQuery) return true;
+  if (photoQuery.startsWith("ai-photo")) return true;
+
+  const tokens = retailSearchTokens(photoQuery);
+  if (!tokens.length) return true;
+  return tokens.some((token) => text.includes(token));
+}
+
+function retailPhotoSimilarityScore(product: RetailRow, photoQuery: string) {
+  const tokens = retailSearchTokens(photoQuery);
+  if (!tokens.length) return 0;
+
+  const name = String(product.name ?? "").toLowerCase();
+  const category = String(product.category ?? "").toLowerCase();
+  const address = String(product.address ?? "").toLowerCase();
+  const photoKeywords = String(product.photo_keywords ?? "").toLowerCase();
+  const notes = String(product.notes ?? "").toLowerCase();
+  const photoUrl = String(product.photo_url ?? "").toLowerCase();
+
+  let score = 0;
+  for (const token of tokens) {
+    if (photoKeywords.includes(token)) score += 24;
+    if (name.includes(token)) score += 18;
+    if (category.includes(token)) score += 14;
+    if (address.includes(token)) score += 8;
+    if (notes.includes(token)) score += 8;
+    if (photoUrl.includes(token)) score += 6;
+  }
+
+  return Math.min(99, Math.round((score / Math.max(1, tokens.length * 18)) * 100));
+}
+
+function rankRetailProducts(products: RetailRow[], photoQuery: string) {
+  if (!photoQuery) return products;
+  return [...products].sort((a, b) => retailPhotoSimilarityScore(b, photoQuery) - retailPhotoSimilarityScore(a, photoQuery));
+}
+
+function buildSimilarPhotoProducts(
+  products: RetailRow[],
+  photoQuery: string,
+  saleSummaryByProduct: Map<string, { sold: number; revenue: number; profit: number }>,
+) {
+  return products
+    .map((product) => {
+      const score = retailPhotoSimilarityScore(product, photoQuery);
+      const summary = saleSummaryByProduct.get(String(product.id)) ?? { sold: 0, revenue: 0, profit: 0 };
+      return {
+        product,
+        score,
+        remaining: Number(product.initial_quantity ?? 0) - summary.sold,
+      };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || String(a.product.name ?? "").localeCompare(String(b.product.name ?? "")));
+}
+
 function buildSaleSummaryByProduct(sales: RetailRow[]) {
   const map = new Map<string, { sold: number; revenue: number; profit: number }>();
 
@@ -1269,7 +1394,9 @@ function fetchRetailProducts({
 
   if (category) request = request.ilike("category", `%${category}%`);
   if (address) request = request.ilike("address", `%${address}%`);
-  if (photo) request = request.or(`photo_url.ilike.%${photo}%,photo_keywords.ilike.%${photo}%`);
+  if (photo && !photo.startsWith("ai-photo")) {
+    request = request.or(`photo_url.ilike.%${photo}%,photo_keywords.ilike.%${photo}%`);
+  }
 
   return request.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
 }
