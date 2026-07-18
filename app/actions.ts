@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { canManage, isPlatformAdminUser, requireUser } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { BUSINESS_INDUSTRIES, dashboardRouteForIndustry } from "@/lib/industries";
 import { getRoboticsModule, roboticsModuleList, type RoboticsModuleKey } from "@/lib/robotics-crm";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
@@ -346,12 +346,11 @@ export async function login(formData: FormData) {
   const email = value(formData, "email");
   const password = value(formData, "password");
   const supabase = await createClient();
-  const { data, error } = await supabase.auth
+  const { error } = await supabase.auth
     .signInWithPassword({ email, password })
     .catch((error) => redirect(`/login?error=${encodeURIComponent(authErrorMessage(error))}`));
 
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`);
-  if (data.user && await isPlatformAdminUser(data.user.id)) redirect("/admin");
   redirect("/dashboard");
 }
 
