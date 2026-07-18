@@ -1,4 +1,3 @@
--- Clean rerunnable base schema for CRM.Space.
 create extension if not exists pgcrypto;
 
 do $$
