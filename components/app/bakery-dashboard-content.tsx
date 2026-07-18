@@ -3,7 +3,7 @@ import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
-import { canManage, requireMembership } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { normalizeIndustry } from "@/lib/industries";
 import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Truck } from "lucide-react";
 import Link from "next/link";
@@ -57,7 +57,7 @@ export async function BakeryDashboardContent({
   searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string }>;
   section?: BakerySection;
 }) {
-  const [{ supabase, membership }, params] = await Promise.all([requireMembership(), searchParams]);
+  const [{ supabase, membership }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
   const isManufacturing = normalizeIndustry(company?.business_type) === "Manufacturing";

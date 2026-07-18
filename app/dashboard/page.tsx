@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { requireMembership } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { dashboardRouteForStoredIndustry } from "@/lib/industry-dashboard";
 
 export default async function DashboardIndexPage() {
-  const { membership } = await requireMembership();
+  const { membership } = await requireUser();
   if (!membership) redirect("/onboarding");
   if (membership.role === "employee" && String(membership.position ?? "").toLowerCase().includes("mentor")) {
     redirect("/dashboard/mentor");

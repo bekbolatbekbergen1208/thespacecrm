@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { logout } from "@/app/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
-import { requireMembership } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { Lock, MessageCircle } from "lucide-react";
 
 export default async function BillingBlockedPage() {
-  const { membership } = await requireMembership();
+  const { membership } = await requireUser();
   const company = Array.isArray(membership?.companies) ? membership?.companies[0] : membership?.companies;
 
   return (

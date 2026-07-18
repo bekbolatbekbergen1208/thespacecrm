@@ -13,7 +13,7 @@ import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { PhotoSearchField } from "@/components/app/photo-search-field";
-import { canManage, requireMembership } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { ArchiveRestore, BarChart3, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleDollarSign, Download, Image as ImageIcon, MapPin, MessageCircle, Package, Percent, PieChart, RotateCcw, Search, ShoppingCart, Trash2, TrendingUp } from "lucide-react";
 
 type RetailRow = {
@@ -43,7 +43,7 @@ export async function RetailDashboardContent({
   searchParams: Promise<RetailSearchParams>;
   section: RetailSection;
 }) {
-  const [{ supabase, membership }, params] = await Promise.all([requireMembership(), searchParams]);
+  const [{ supabase, membership }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
   const editable = canManage(membership!.role);
   const today = new Date().toISOString().slice(0, 10);
@@ -1364,7 +1364,7 @@ function fetchRetailProducts({
   addressQuery,
   photoQuery,
 }: {
-  supabase: Awaited<ReturnType<typeof requireMembership>>["supabase"];
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"];
   companyId: string;
   section: RetailSection;
   productColumns: string;
@@ -1411,7 +1411,7 @@ function fetchRetailSales({
   saleColumns,
   productIds,
 }: {
-  supabase: Awaited<ReturnType<typeof requireMembership>>["supabase"];
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"];
   companyId: string;
   selectedDate: string;
   section: RetailSection;

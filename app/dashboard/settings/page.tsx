@@ -2,13 +2,13 @@ import { updateCompany } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field } from "@/components/app/auth-card";
 import { Select, SmallButton } from "@/components/app/forms";
-import { canAdmin, requireMembership } from "@/lib/auth";
+import { canAdmin, requireUser } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 import { BUSINESS_INDUSTRIES, normalizeIndustry } from "@/lib/industries";
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const [{ supabase, membership }, params, locale] = await Promise.all([requireMembership(), searchParams, getServerLocale()]);
+  const [{ supabase, membership }, params, locale] = await Promise.all([requireUser(), searchParams, getServerLocale()]);
   const tt = (value: string) => translateLiteral(locale, value);
   const companyId = membership!.company_id;
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;

@@ -1,12 +1,12 @@
 import { deleteInventoryItem, saveInventoryItem } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field, SmallButton } from "@/components/app/forms";
-import { canManage, requireMembership } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const [{ supabase, membership }, params, locale] = await Promise.all([requireMembership(), searchParams, getServerLocale()]);
+  const [{ supabase, membership }, params, locale] = await Promise.all([requireUser(), searchParams, getServerLocale()]);
   const tt = (value: string) => translateLiteral(locale, value);
   if (!canManage(membership!.role)) {
     return (

@@ -3,7 +3,7 @@ import { saveMentorLessonSession } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { SmallButton } from "@/components/app/forms";
 import { PrintButton } from "@/components/app/print-button";
-import { canManage, requireMembership } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { BookOpenCheck, CalendarDays, ClipboardList, Star, Users } from "lucide-react";
 
 type Row = {
@@ -16,7 +16,7 @@ export default async function MentorWorkspacePage({
 }: {
   searchParams: Promise<{ group?: string; error?: string; saved?: string }>;
 }) {
-  const [{ supabase, membership, user }, params] = await Promise.all([requireMembership(), searchParams]);
+  const [{ supabase, membership, user }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
   const today = new Date().toISOString().slice(0, 10);

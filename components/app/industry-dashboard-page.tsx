@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, PageHeader } from "@/components/app/app-shell";
-import { requireMembership } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { dashboardRouteForStoredIndustry, getIndustryDashboardConfigBySlug } from "@/lib/industry-dashboard";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 import { ArrowRight, BarChart3, CheckCircle2, CircleDollarSign, Layers3 } from "lucide-react";
 
 export async function IndustryDashboardPage({ slug }: { slug: string }) {
-  const [{ supabase, membership, user }, locale] = await Promise.all([requireMembership(), getServerLocale()]);
+  const [{ supabase, membership, user }, locale] = await Promise.all([requireUser(), getServerLocale()]);
   const companyId = membership!.company_id;
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
   const config = getIndustryDashboardConfigBySlug(slug);

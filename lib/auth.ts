@@ -68,16 +68,6 @@ export async function requireUser() {
   return context;
 }
 
-export async function requireMembership() {
-  const context = await requireUser();
-
-  if (!context.membership) {
-    redirect("/onboarding");
-  }
-
-  return { ...context, membership: context.membership };
-}
-
 export function canManage(role?: Role) {
   return role === "founder" || role === "admin" || role === "manager";
 }

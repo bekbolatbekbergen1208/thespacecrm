@@ -1,7 +1,7 @@
 import { Card, PageHeader } from "@/components/app/app-shell";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { ContractPdfPrintButton } from "@/components/app/contract-pdf-print-button";
-import { requireMembership } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 
 type Row = {
   id: string;
@@ -9,7 +9,7 @@ type Row = {
 };
 
 export default async function EducationContractPage() {
-  const { supabase, membership } = await requireMembership();
+  const { supabase, membership } = await requireUser();
   const companyId = membership!.company_id;
   const [{ data: company }, { data: students }] = await Promise.all([
     supabase.from("companies").select("name, business_type").eq("id", companyId).maybeSingle(),
