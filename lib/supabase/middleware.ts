@@ -23,8 +23,8 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const userResponse = await withTimeout(supabase.auth.getUser().catch(() => null), 6000, null);
-  if (userResponse?.error) {
+  const { error } = await supabase.auth.getUser();
+  if (error) {
     response.cookies.getAll().forEach((cookie) => {
       if (cookie.name.startsWith("sb-")) {
         response.cookies.delete(cookie.name);
@@ -33,11 +33,4 @@ export async function updateSession(request: NextRequest) {
   }
 
   return response;
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T) {
-  return Promise.race([
-    promise.catch(() => fallback),
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs)),
-  ]);
 }

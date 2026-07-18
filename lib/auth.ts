@@ -35,8 +35,9 @@ export const getSessionContext = cache(async function getSessionContext() {
   }
 
   const supabase = await createClient();
-  const userResponse = await withTimeout(supabase.auth.getUser().catch(() => null), 6000, null);
-  const user = userResponse?.error ? null : userResponse?.data.user ?? null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return { setupMissing: false as const, user: null, supabase };
@@ -104,11 +105,4 @@ export async function requirePlatformAdmin() {
 
   if (!admin) redirect("/dashboard");
   return { ...context, admin };
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T) {
-  return Promise.race([
-    promise.catch(() => fallback),
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs)),
-  ]);
 }
