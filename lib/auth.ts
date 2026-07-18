@@ -71,10 +71,25 @@ export async function requireMembership() {
   const context = await requireUser();
 
   if (!context.membership) {
+    if (await isPlatformAdminUser(context.user.id)) {
+      redirect("/admin");
+    }
     redirect("/onboarding");
   }
 
   return { ...context, membership: context.membership };
+}
+
+export async function isPlatformAdminUser(userId: string) {
+  if (!hasSupabaseEnv()) return false;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("platform_admins")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return !error && Boolean(data);
 }
 
 export function canManage(role?: Role) {
