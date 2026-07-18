@@ -304,8 +304,8 @@ create index if not exists platform_subscription_payments_company_paid_idx
 on public.platform_subscription_payments (company_id, paid_at desc);
 
 -- После создания вашего аккаунта вставьте себя как владельца платформы:
-insert into public.platform_admins (user_id, email, full_name)
-select id, email, coalesce(raw_user_meta_data->>'full_name', email)
-from auth.users
-where lower(email) = lower('BekbergenBekbolat0@gmail.com')
-on conflict (user_id) do nothing;
+-- insert into public.platform_admins (user_id, email, full_name)
+-- select id, email, coalesce(raw_user_meta_data->>'full_name', email)
+-- from auth.users
+-- where email = 'YOUR_ADMIN_EMAIL@example.com'
+-- on conflict (user_id) do nothing;
