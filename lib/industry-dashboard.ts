@@ -63,7 +63,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
     slug: "bakery",
     route: "/dashboard/bakery",
     title: "Bakery Dashboard",
-    description: "Магазины, кекс, коржик, пряник, Kaspi/наличные, долги, возвраты и остатки.",
+    description: "Магазины, продукция, Kaspi/наличные, долги, возвраты и остатки.",
     nav: [
       ["Пекарня", "/dashboard/bakery"],
       ["AI ассистент", "/dashboard/bakery/assistant"],
@@ -81,7 +81,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
       ["Управление сотрудниками", "/dashboard/employees"],
       ["Настройки", "/dashboard/settings"],
     ],
-    stats: [{ label: "Магазины", value: "Routes", note: "Точки продаж" }, { label: "Продукты", value: "Stock", note: "Кекс, коржик, пряник" }, { label: "Выручка", value: "Cash/Kaspi", note: "Ежедневный расчёт" }],
+    stats: [{ label: "Магазины", value: "Routes", note: "Точки продаж" }, { label: "Продукты", value: "Stock", note: "Каталог продукции" }, { label: "Выручка", value: "Cash/Kaspi", note: "Ежедневный расчёт" }],
     windows: [{ title: "Магазины", href: "/dashboard/bakery", metric: "Sales", detail: "Добавляйте магазины и считайте продажи по точкам." }, { title: "Остатки", href: "/dashboard/bakery", metric: "Stock", detail: "Founder добавляет выпуск, система считает остаток." }, { title: "Возвраты", href: "/dashboard/bakery", metric: "Returns", detail: "Возвраты минусуются из суммы." }, { title: "Долги", href: "/dashboard/bakery", metric: "Debt", detail: "Контроль долгов по магазинам и дням." }],
     reports: ["Daily sales", "Cash/Kaspi split", "Returns", "Shop debt"],
   },

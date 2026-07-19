@@ -178,14 +178,13 @@ export async function BakeryDashboardContent({
     plyannik: stockTotals.plyannik - saleTotals.plyannikNet,
   };
   const assistantInsights = buildBakeryAssistantInsights({
-    selectedDate,
     shopCount: allShopRows.length,
     dayStock,
     dayTotals,
     totalShopDebt,
     debtRowsCount: debtRows.length,
-    remaining,
     supplierDebt,
+    productSummaries,
   });
   const assistantAnswer = aiQuestion
     ? answerBakeryQuestion({
@@ -201,6 +200,7 @@ export async function BakeryDashboardContent({
       dayStock,
       debtRows,
       supplierRows,
+      productSummaries,
     })
     : "";
 
@@ -210,7 +210,7 @@ export async function BakeryDashboardContent({
         title={isManufacturing ? "Производственный бизнес" : "Пекарня"}
         description={isManufacturing
           ? "Производство, продукция, склад, поставщики, доставка, точки продаж, Kaspi/наличные, долги и отчёты."
-          : "Магазины, продажи, возвраты, Kaspi/наличные, долги и остатки по кексу, коржику и плянику."}
+          : "Магазины, продажи, возвраты, Kaspi/наличные, долги и остатки по продукции."}
       />
       {params.error && <p className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{params.error}</p>}
       {params.saved === "stock" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продукция за день сохранена.</p>}
@@ -242,9 +242,9 @@ export async function BakeryDashboardContent({
               <Bot className="h-3.5 w-3.5" />
               AI ассистент
             </p>
-            <h2 className="mt-3 text-2xl font-black text-white">Помощник пекарни на {selectedDate}</h2>
+            <h2 className="mt-3 text-2xl font-black text-white">AI помощник бизнеса на {selectedDate}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Анализирует производство, продажи, долги, возвраты, остатки и поставщиков. Сейчас работает без внешнего API, поэтому подсказки появляются сразу по вашим данным.
+              Анализирует продукцию, продажи, долги, возвраты, остатки, расходы и поставщиков. Сейчас работает без внешнего API, поэтому подсказки появляются сразу по вашим данным.
             </p>
           </div>
           <span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${assistantInsights.urgentCount ? "bg-red-500 text-white" : "bg-emerald-300 text-emerald-950"}`}>
@@ -264,16 +264,20 @@ export async function BakeryDashboardContent({
               </span>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Рекомендация</p>
-                <h3 className="font-black text-white">План на следующий выпуск</h3>
+                <h3 className="font-black text-white">План по продукции</h3>
               </div>
             </div>
             <div className="mt-4 grid gap-3">
-              <MiniPill label="Кекс" value={`${assistantInsights.nextProduction.keks} шт`} />
-              <MiniPill label="Коржик" value={`${assistantInsights.nextProduction.korzhik} шт`} />
-              <MiniPill label="Пляник" value={`${assistantInsights.nextProduction.plyannik} шт`} />
+              {assistantInsights.nextProducts.length ? (
+                assistantInsights.nextProducts.map((product) => (
+                  <MiniPill key={product.name} label={product.name} value={`${product.quantity} шт`} />
+                ))
+              ) : (
+                <MiniPill label="Продукция" value="Добавьте товары" />
+              )}
             </div>
             <p className="mt-4 text-sm leading-6 text-slate-400">
-              Ассистент считает план от продаж за выбранный день и текущего остатка. Если продаж мало, он предлагает минимальный запас.
+              Ассистент считает план от продаж, текущего остатка и каталога продукции. Если данных мало, он подсказывает добавить товары и продажи.
             </p>
           </div>
         </div>
@@ -1382,6 +1386,7 @@ function answerBakeryQuestion({
   dayStock,
   debtRows,
   supplierRows,
+  productSummaries,
 }: {
   question: string;
   selectedDate: string;
@@ -1395,6 +1400,7 @@ function answerBakeryQuestion({
   dayStock: ReturnType<typeof sumStock>;
   debtRows: Array<{ shop: BakeryRow; total: ReturnType<typeof sumSales> }>;
   supplierRows: BakeryRow[];
+  productSummaries: Array<ReturnType<typeof summarizeProduct>>;
 }) {
   const q = question.toLowerCase();
   const wantsDebt = /долг|қарыз|карыз|оплат|төле|толе/.test(q);
@@ -1443,21 +1449,35 @@ function answerBakeryQuestion({
   }
 
   if (wantsStock) {
+    if (productSummaries.length) {
+      const lines = productSummaries
+        .slice(0, 10)
+        .map((item) => `- ${String(item.product.name ?? "Продукция")}: осталось ${item.remaining} шт, продано ${item.sold} шт`)
+        .join("\n");
+      return [
+        "Текущий остаток по продукции:",
+        lines,
+        productSummaries.some((item) => item.remaining <= 2) ? "Есть низкий остаток. Лучше пополнить продукцию." : "Остаток нормальный.",
+      ].join("\n");
+    }
     return [
       "Текущий остаток:",
-      `- Кекс: ${remaining.keks} шт`,
-      `- Коржик: ${remaining.korzhik} шт`,
-      `- Пляник: ${remaining.plyannik} шт`,
-      Object.values(remaining).some((value) => value <= 10) ? "Есть низкий остаток. Лучше запланировать новый выпуск." : "Остаток нормальный.",
+      `- Продукция: ${Object.values(remaining).reduce((sum, value) => sum + value, 0)} шт`,
+      "Добавьте товары в каталог, чтобы ассистент показывал остатки по каждому продукту.",
     ].join("\n");
   }
 
   if (wantsProduction) {
+    if (productSummaries.length) {
+      const lines = productSummaries
+        .slice(0, 10)
+        .map((item) => `- ${String(item.product.name ?? "Продукция")}: старт ${Number(item.product.initial_quantity ?? 0)} шт, продано ${item.sold} шт, осталось ${item.remaining} шт`)
+        .join("\n");
+      return `Продукция за ${selectedDate}:\n${lines}`;
+    }
     return [
       `Производство за ${selectedDate}:`,
-      `- Кекс: ${dayStock.keks} шт`,
-      `- Коржик: ${dayStock.korzhik} шт`,
-      `- Пляник: ${dayStock.plyannik} шт`,
+      `- Продукция: ${(dayStock.keks + dayStock.korzhik + dayStock.plyannik).toLocaleString()} шт`,
       `Всего: ${(dayStock.keks + dayStock.korzhik + dayStock.plyannik).toLocaleString()} шт`,
     ].join("\n");
   }
@@ -1472,52 +1492,51 @@ function answerBakeryQuestion({
   }
 
   return [
-    "Я могу ответить по данным пекарни. Попробуйте спросить:",
+    "Я могу ответить по данным бизнеса. Попробуйте спросить:",
     "- у кого долг?",
     "- какая прибыль сегодня?",
     "- какие расходы?",
-    "- сколько осталось продуктов?",
-    "- сколько произвели сегодня?",
+    "- сколько осталось продукции?",
+    "- что продаётся лучше?",
     "- какие поставщики?",
   ].join("\n");
 }
 
 function buildBakeryAssistantInsights({
-  selectedDate,
   shopCount,
   dayStock,
   dayTotals,
   totalShopDebt,
   debtRowsCount,
-  remaining,
   supplierDebt,
+  productSummaries,
 }: {
-  selectedDate: string;
   shopCount: number;
   dayStock: ReturnType<typeof sumStock>;
   dayTotals: ReturnType<typeof sumSales>;
   totalShopDebt: number;
   debtRowsCount: number;
-  remaining: { keks: number; korzhik: number; plyannik: number };
   supplierDebt: number;
+  productSummaries: Array<ReturnType<typeof summarizeProduct>>;
 }) {
   const items: Array<{ title: string; detail: string; tone: "danger" | "warning" | "success" | "info" }> = [];
   const producedTotal = dayStock.keks + dayStock.korzhik + dayStock.plyannik;
   const soldTotal = dayTotals.keksNet + dayTotals.korzhikNet + dayTotals.plyannikNet;
-  const lowStock = Object.entries(remaining).filter(([, value]) => value <= 10);
+  const productSoldTotal = productSummaries.reduce((sum, item) => sum + item.sold, 0);
+  const lowProducts = productSummaries.filter((item) => item.remaining <= 2);
 
-  if (!producedTotal) {
+  if (!producedTotal && !productSummaries.length) {
     items.push({
-      title: "Производство ещё не записано",
-      detail: `За ${selectedDate} не указано количество произведённых продуктов. Сначала внесите выпуск, чтобы остатки считались правильно.`,
+      title: "Продукция ещё не добавлена",
+      detail: `Добавьте товары/продукцию в каталог. После этого ассистент будет считать остатки, продажи и план пополнения.`,
       tone: "warning",
     });
   }
 
-  if (shopCount && !soldTotal) {
+  if ((shopCount || productSummaries.length) && !soldTotal && !productSoldTotal) {
     items.push({
-      title: "Продажи по магазинам не внесены",
-      detail: "Магазины есть, но за выбранный день нет продаж. Проверьте, внес ли водитель данные по точкам.",
+      title: "Продажи не внесены",
+      detail: "За выбранный день нет продаж. Проверьте, внесены ли продажи по точкам или по продукции.",
       tone: "warning",
     });
   }
@@ -1546,10 +1565,10 @@ function buildBakeryAssistantInsights({
     });
   }
 
-  if (lowStock.length > 0) {
+  if (lowProducts.length > 0) {
     items.push({
       title: "Низкий остаток",
-      detail: `Мало осталось: ${lowStock.map(([name, value]) => `${productLabel(name)} ${value} шт`).join(", ")}. Запланируйте новый выпуск.`,
+      detail: `Мало осталось: ${lowProducts.slice(0, 6).map((item) => `${String(item.product.name ?? "Продукция")} ${item.remaining} шт`).join(", ")}. Пополните продукцию.`,
       tone: "warning",
     });
   }
@@ -1565,20 +1584,22 @@ function buildBakeryAssistantInsights({
   if (!items.length) {
     items.push({
       title: "Данных пока мало",
-      detail: "Добавьте производство и продажи по магазинам. После этого ассистент покажет риски, долги и план выпуска.",
+      detail: "Добавьте продукцию, продажи и расходы. После этого ассистент покажет риски, долги и план пополнения.",
       tone: "info",
     });
   }
 
-  const nextProduction = {
-    keks: recommendedProduction(dayTotals.keksNet, remaining.keks),
-    korzhik: recommendedProduction(dayTotals.korzhikNet, remaining.korzhik),
-    plyannik: recommendedProduction(dayTotals.plyannikNet, remaining.plyannik),
-  };
+  const nextProducts = productSummaries
+    .map((item) => ({
+      name: String(item.product.name ?? "Продукция"),
+      quantity: recommendedProduction(item.sold, item.remaining),
+    }))
+    .filter((item) => item.quantity > 0)
+    .slice(0, 8);
 
   return {
     items,
-    nextProduction,
+    nextProducts,
     urgentCount: items.filter((item) => item.tone === "danger").length,
   };
 }
@@ -1586,15 +1607,6 @@ function buildBakeryAssistantInsights({
 function recommendedProduction(soldToday: number, currentRemaining: number) {
   const target = soldToday > 0 ? Math.ceil(soldToday * 1.15) : 20;
   return Math.max(0, target - Math.max(0, currentRemaining));
-}
-
-function productLabel(name: string) {
-  const labels: Record<string, string> = {
-    keks: "кекс",
-    korzhik: "коржик",
-    plyannik: "пляник",
-  };
-  return labels[name] ?? name;
 }
 
 function DailyProduction({ title, price, produced }: { title: string; price: number; produced: number }) {
