@@ -383,9 +383,16 @@ function PaymentConfirmPanel({
                   <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Последняя оплата</p>
                   <p className="mt-1 text-sm font-bold text-slate-200">{latestPayment?.paid_at ? String(latestPayment.paid_at) : "Нет оплаты"}</p>
                 </div>
-                <form action={confirmStudentPayment}>
+                <form action={confirmStudentPayment} className="grid gap-2">
                   <input type="hidden" name="studentName" value={name} />
                   <input type="hidden" name="groupName" value={String(student.group_name ?? "")} />
+                  <input
+                    type="date"
+                    name="paidAt"
+                    defaultValue={new Date().toISOString().slice(0, 10)}
+                    className="premium-input h-10 px-3 text-sm text-white outline-none"
+                    aria-label="Дата оплаты"
+                  />
                   <button className="premium-button h-11 w-full bg-emerald-300 px-5 text-sm font-black text-emerald-950 shadow-glow hover:bg-emerald-200">
                     <Check className="h-4 w-4" />
                     Оплачено

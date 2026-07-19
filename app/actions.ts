@@ -1286,6 +1286,7 @@ export async function confirmStudentPayment(formData: FormData) {
   const studentName = z.string().min(1).parse(value(formData, "studentName"));
   const groupName = value(formData, "groupName") || null;
   const today = new Date().toISOString().slice(0, 10);
+  const paidAt = value(formData, "paidAt") || today;
 
   const subscription = await supabase
     .from("robotics_subscriptions")
@@ -1305,7 +1306,7 @@ export async function confirmStudentPayment(formData: FormData) {
     student_name: studentName,
     group_name: groupName,
     amount: price,
-    paid_at: today,
+    paid_at: paidAt,
     method: "Kaspi",
     status: "оплачено",
     comment: `Подтверждено: ${totalLessons} занятий`,
@@ -1318,8 +1319,8 @@ export async function confirmStudentPayment(formData: FormData) {
     subscription_type: subscriptionType,
     total_lessons: totalLessons,
     remaining_lessons: totalLessons,
-    start_date: today,
-    end_date: isoDate(addDays(new Date(), 30)),
+    start_date: paidAt,
+    end_date: isoDate(addDays(new Date(`${paidAt}T00:00:00`), 30)),
     price,
     status: "active",
   };
