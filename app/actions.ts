@@ -739,6 +739,36 @@ export async function saveBakeryProduct(formData: FormData) {
   redirect("/dashboard/bakery/products?saved=product");
 }
 
+export async function deleteBakeryProduct(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/bakery/products?error=${encodeURIComponent("Только founder/admin/manager может удалять товары")}`);
+
+  const productId = z.string().uuid().parse(value(formData, "productId"));
+  const selectedDate = value(formData, "date");
+  const redirectPath = selectedDate ? `/dashboard/bakery/products?date=${encodeURIComponent(selectedDate)}` : "/dashboard/bakery/products";
+  const separator = redirectPath.includes("?") ? "&" : "?";
+
+  const salesResult = await supabase
+    .from("bakery_product_sales")
+    .delete()
+    .eq("product_id", productId)
+    .eq("company_id", companyId);
+
+  if (salesResult.error) redirect(`${redirectPath}${separator}error=${encodeURIComponent(salesResult.error.message)}`);
+
+  const productResult = await supabase
+    .from("bakery_products")
+    .delete()
+    .eq("id", productId)
+    .eq("company_id", companyId);
+
+  if (productResult.error) redirect(`${redirectPath}${separator}error=${encodeURIComponent(productResult.error.message)}`);
+
+  revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/products");
+  redirect(`${redirectPath}${separator}saved=product-deleted`);
+}
+
 export async function markBakeryProductSold(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const productId = z.string().uuid().parse(value(formData, "productId"));

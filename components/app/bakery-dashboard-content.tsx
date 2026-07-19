@@ -1,11 +1,11 @@
-import { markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryClient, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryVehicle } from "@/app/actions";
+import { deleteBakeryProduct, markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryClient, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryVehicle } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
 import { normalizeIndustry } from "@/lib/industries";
-import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Truck, UsersRound } from "lucide-react";
+import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Trash2, Truck, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 type BakeryRow = {
@@ -218,6 +218,7 @@ export async function BakeryDashboardContent({
       {params.saved === "debt" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Долг закрыт.</p>}
       {params.saved === "expense" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Расход сохранён.</p>}
       {params.saved === "product" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар сохранён.</p>}
+      {params.saved === "product-deleted" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар удалён.</p>}
       {params.saved === "product-sale" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продажа товара сохранена.</p>}
       {params.saved === "vehicle" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Авто доставки сохранено.</p>}
       {params.saved === "client" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Клиент производства сохранён.</p>}
@@ -424,6 +425,16 @@ export async function BakeryDashboardContent({
                   <div className="sm:col-span-2"><SmallButton>Назначить проданным</SmallButton></div>
                 </div>
               </form>
+              {editable && (
+                <form action={deleteBakeryProduct} className="mt-3">
+                  <input type="hidden" name="productId" value={item.product.id} />
+                  <input type="hidden" name="date" value={selectedDate} />
+                  <button className="premium-button h-10 w-full border border-red-300/25 bg-red-500/10 px-4 text-xs font-black text-red-100 hover:bg-red-500/20">
+                    <Trash2 className="h-4 w-4" />
+                    Удалить продукт
+                  </button>
+                </form>
+              )}
             </div>
           ))}
         </div>
@@ -440,12 +451,13 @@ export async function BakeryDashboardContent({
                 <th className="px-4 py-3">Продано</th>
                 <th className="px-4 py-3">Осталось</th>
                 <th className="px-4 py-3">Прибыль</th>
+                {editable && <th className="px-4 py-3">Действие</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {!productSummaries.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-400" colSpan={8}>Товаров пока нет.</td>
+                  <td className="px-4 py-6 text-center text-slate-400" colSpan={editable ? 9 : 8}>Товаров пока нет.</td>
                 </tr>
               )}
               {productSummaries.map((item) => (
@@ -462,6 +474,18 @@ export async function BakeryDashboardContent({
                     </span>
                   </td>
                   <td className="px-4 py-4 font-black text-emerald-100">{item.profit.toLocaleString()} ₸</td>
+                  {editable && (
+                    <td className="px-4 py-4">
+                      <form action={deleteBakeryProduct}>
+                        <input type="hidden" name="productId" value={item.product.id} />
+                        <input type="hidden" name="date" value={selectedDate} />
+                        <button className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-red-300/25 bg-red-500/10 px-3 text-xs font-black text-red-100 transition hover:bg-red-500/20">
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Удалить
+                        </button>
+                      </form>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
