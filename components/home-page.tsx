@@ -294,7 +294,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         <HeroVisual />
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section className="content-auto mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="text-center">
           <SectionLabel>{tt("Choose your path")}</SectionLabel>
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{tt("Who are you?")}</h2>
@@ -319,7 +319,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section id="features" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section id="features" className="content-auto mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <SectionLabel>{tt("Unified operations")}</SectionLabel>
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-5xl">{tt("Everything your business runs on, connected.")}</h2>
@@ -338,7 +338,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section id="industries" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section id="industries" className="content-auto mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="glass overflow-hidden rounded-[8px] p-6 sm:p-10">
           <SectionLabel>Built for operators</SectionLabel>
           <h2 className="max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-5xl">A premium control layer for real-world businesses.</h2>
@@ -354,7 +354,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section id="demo" className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-2 lg:px-8">
+      <section id="demo" className="content-auto mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-2 lg:px-8">
         <div>
           <SectionLabel>AI assistant</SectionLabel>
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">Ask your business anything. Get instant insight.</h2>
@@ -386,7 +386,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.85fr_1fr] lg:px-8">
+      <section className="content-auto mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.85fr_1fr] lg:px-8">
         <div className="relative flex justify-center gap-4">
           <div className="-rotate-6 scale-90">
             <PhoneMockup compact />
@@ -410,7 +410,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section id="pricing" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section id="pricing" className="content-auto mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="text-center">
           <SectionLabel>Pricing</SectionLabel>
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">Scale from first team to global operation.</h2>
@@ -440,7 +440,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section className="content-auto mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="grid gap-4 lg:grid-cols-3">
           {testimonials.map((item) => (
             <div key={item.name} className="glass rounded-[8px] p-6">
@@ -454,7 +454,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section id="contact" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section id="contact" className="content-auto mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="relative overflow-hidden rounded-[8px] border border-white/10 bg-gradient-to-br from-cyan-300/16 via-violet-500/18 to-white/[0.04] p-8 text-center shadow-glow sm:p-14">
           <LineChart className="mx-auto mb-6 h-12 w-12 text-cyan-100" />
           <h2 className="text-4xl font-black tracking-tight text-white sm:text-6xl">Launch Your Business Into The Future</h2>

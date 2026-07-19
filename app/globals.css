@@ -228,6 +228,11 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   animation: soft-pop 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
 .skeleton {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
   background-size: 220% 100%;
@@ -451,6 +456,44 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
     18px 22px 0 #07111f,
     34px 42px 60px rgba(0, 0, 0, 0.55),
     0 0 80px rgba(57, 216, 255, 0.25);
+}
+
+@media (max-width: 767px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.18), transparent 22rem),
+      linear-gradient(180deg, #030712 0%, #071426 52%, #030712 100%);
+  }
+
+  .glass,
+  .premium-card,
+  .premium-table thead th {
+    backdrop-filter: none;
+  }
+
+  .premium-card:hover,
+  .premium-button:hover {
+    transform: none;
+  }
+
+  .perspective-phone {
+    transform: none;
+  }
+
+  .phone-depth {
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.42),
+      0 0 48px rgba(57, 216, 255, 0.16);
+  }
+
+  .animate-float,
+  .animate-orbit {
+    animation: none !important;
+  }
 }
 
 @keyframes page-enter {
