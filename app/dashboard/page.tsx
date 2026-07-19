@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { defaultEmployeeHomeRoute, normalizeAllowedRoutes } from "@/lib/employee-permissions";
 import { dashboardRouteForStoredIndustry } from "@/lib/industry-dashboard";
 
 export default async function DashboardIndexPage() {
@@ -10,5 +11,15 @@ export default async function DashboardIndexPage() {
   }
 
   const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
-  redirect(membership.dashboard_route || company?.dashboard_route || dashboardRouteForStoredIndustry(company?.business_type));
+  const dashboardRoute = membership.dashboard_route || company?.dashboard_route || dashboardRouteForStoredIndustry(company?.business_type);
+  if (membership.role === "employee") {
+    redirect(defaultEmployeeHomeRoute({
+      allowedRoutes: normalizeAllowedRoutes(membership.allowed_routes),
+      dashboardRoute,
+      position: membership.position,
+      businessType: company?.business_type ?? null,
+    }));
+  }
+
+  redirect(dashboardRoute);
 }

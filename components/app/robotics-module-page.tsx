@@ -44,6 +44,7 @@ export async function RoboticsModulePage({
   ]);
   const crmModule = getRoboticsModule(moduleKey);
   const companyId = membership!.company_id;
+  const canSeeFinancials = membership!.role !== "employee";
 
   if (!crmModule.table) {
     const [studentsResult, attendanceResult, subscriptionsResult, gradesResult, lessonsResult] = await Promise.all([
@@ -143,7 +144,7 @@ export async function RoboticsModulePage({
     needsGroupsPanel
       ? supabase.from("robotics_lessons").select("*").eq("company_id", companyId).order("lesson_date", { ascending: false }).limit(300)
       : emptyResult,
-    needsGroupsPanel || needsAttendancePanel || needsPaymentsPanel
+    canSeeFinancials && (needsGroupsPanel || needsAttendancePanel || needsPaymentsPanel)
       ? supabase.from("robotics_payments").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(300)
       : emptyResult,
     needsGroupsPanel || needsCalendarPanel || needsAttendancePanel
@@ -158,7 +159,7 @@ export async function RoboticsModulePage({
   const mentors = moduleKey === "mentors" ? rows : (mentorsResult.data ?? []) as RoboticsRow[];
   const employees = (employeesResult.data ?? []) as unknown as RoboticsRow[];
   const lessons = moduleKey === "schedule" ? filtered : (lessonsResult.data ?? []) as RoboticsRow[];
-  const payments = moduleKey === "payments" ? rows : (paymentsResult.data ?? []) as RoboticsRow[];
+  const payments = canSeeFinancials ? (moduleKey === "payments" ? rows : (paymentsResult.data ?? []) as RoboticsRow[]) : [];
   const attendance = (attendanceResult.data ?? []) as RoboticsRow[];
   const subscriptions = (subscriptionsResult.data ?? []) as RoboticsRow[];
   const formFields = withDirectoryOptions(crmModule.fields, { students, groups, mentors, employees });
@@ -192,7 +193,7 @@ export async function RoboticsModulePage({
       )}
 
       {moduleKey === "groups" && (
-        <GroupsPanel groups={filtered} students={students} mentors={mentors} employees={employees} lessons={lessons} payments={payments} attendance={attendance} />
+        <GroupsPanel groups={filtered} students={students} mentors={mentors} employees={employees} lessons={lessons} payments={payments} attendance={attendance} canSeeFinancials={canSeeFinancials} />
       )}
 
       {moduleKey === "schedule" && (
@@ -599,6 +600,7 @@ function GroupsPanel({
   lessons,
   payments,
   attendance,
+  canSeeFinancials,
 }: {
   groups: RoboticsRow[];
   students: RoboticsRow[];
@@ -607,6 +609,7 @@ function GroupsPanel({
   lessons: RoboticsRow[];
   payments: RoboticsRow[];
   attendance: RoboticsRow[];
+  canSeeFinancials: boolean;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const mentorNames = unique([
@@ -656,10 +659,10 @@ function GroupsPanel({
                 </span>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              <div className={`mt-5 grid gap-3 ${canSeeFinancials ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
                 <MiniStat label="Ученики" value={groupStudents.length} />
                 <MiniStat label="Уроки" value={groupLessons.length} />
-                <MiniStat label="Оплаты" value={groupPayments.length} />
+                {canSeeFinancials && <MiniStat label="Оплаты" value={groupPayments.length} />}
                 <MiniStat label="Сегодня" value={`${groupPresentToday}/${groupStudents.length}`} />
               </div>
               </summary>

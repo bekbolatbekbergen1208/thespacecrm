@@ -2,6 +2,7 @@ import { approveEmployeeAccess, deleteEmployee, saveEmployee, updateEmployeePerm
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field, SmallButton } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
+import { EDUCATION_EMPLOYEE_ROUTES } from "@/lib/employee-permissions";
 import { routePermissionsFromNav } from "@/lib/employee-permissions";
 import { getIndustryDashboardConfig } from "@/lib/industry-dashboard";
 import { translateLiteral } from "@/lib/i18n";
@@ -19,7 +20,8 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     );
   }
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
-  const permissionOptions = routePermissionsFromNav(getIndustryDashboardConfig(company?.business_type).nav);
+  const permissionOptions = routePermissionsFromNav(getIndustryDashboardConfig(company?.business_type).nav)
+    .filter((option) => company?.business_type !== "Education Center" || EDUCATION_EMPLOYEE_ROUTES.includes(option.href as typeof EDUCATION_EMPLOYEE_ROUTES[number]));
   const [{ data: employees, error: employeesError }, { data: accessRequests, error: requestsError }, { data: members, error: membersError }] = await Promise.all([
     supabase.from("employees").select("*").eq("company_id", membership!.company_id).order("created_at", { ascending: false }),
     canManage(membership!.role)

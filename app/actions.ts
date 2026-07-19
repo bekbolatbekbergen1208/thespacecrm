@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { canManage, requireUser } from "@/lib/auth";
+import { EDUCATION_EMPLOYEE_ROUTES } from "@/lib/employee-permissions";
 import { BUSINESS_INDUSTRIES, dashboardRouteForIndustry } from "@/lib/industries";
 import { getRoboticsModule, roboticsModuleList, type RoboticsModuleKey } from "@/lib/robotics-crm";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
@@ -518,6 +519,7 @@ async function companyContext() {
     supabase: context.supabase,
     companyId: context.membership.company_id,
     role: context.membership.role as Role,
+    context,
   };
 }
 
@@ -1144,14 +1146,17 @@ export async function deleteEmployee(formData: FormData) {
 }
 
 export async function updateEmployeePermissions(formData: FormData) {
-  const { supabase, companyId, role } = await companyContext();
+  const { supabase, companyId, role, context } = await companyContext();
   if (!canManage(role)) redirect(`/dashboard/employees?error=${encodeURIComponent("Only founders, admins, and managers can update permissions")}`);
 
   const memberId = z.string().uuid().parse(value(formData, "memberId"));
+  const company = Array.isArray(context.membership?.companies) ? context.membership.companies[0] : context.membership?.companies;
+  const educationOnly = new Set<string>(EDUCATION_EMPLOYEE_ROUTES);
   const allowedRoutes = formData
     .getAll("allowedRoutes")
     .filter((item): item is string => typeof item === "string")
-    .filter((route) => route.startsWith("/dashboard"));
+    .filter((route) => route.startsWith("/dashboard"))
+    .filter((route) => company?.business_type !== "Education Center" || educationOnly.has(route));
 
   const { error } = await supabase
     .from("company_members")

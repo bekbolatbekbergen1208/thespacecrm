@@ -3,7 +3,7 @@ import { logout } from "@/app/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
 import { NavLink } from "@/components/app/nav-link";
-import { effectiveEmployeeRoutes, normalizeAllowedRoutes, routeIsAllowed } from "@/lib/employee-permissions";
+import { defaultEmployeeHomeRoute, effectiveEmployeeRoutes, normalizeAllowedRoutes, routeIsAllowed } from "@/lib/employee-permissions";
 import { getIndustryDashboardConfig } from "@/lib/industry-dashboard";
 import { translateLiteral, type getDictionary, type Locale } from "@/lib/i18n";
 import type { Role } from "@/lib/supabase/types";
@@ -45,7 +45,15 @@ export function AppShell({
     allowedRoutes: normalizeAllowedRoutes(allowedRoutes),
     dashboardRoute,
     position,
+    businessType,
   });
+  const employeeHomeRoute = defaultEmployeeHomeRoute({
+    allowedRoutes: normalizeAllowedRoutes(allowedRoutes),
+    dashboardRoute,
+    position,
+    businessType,
+  });
+  const homeRoute = role === "employee" ? employeeHomeRoute : dashboardRoute;
   const visibleNav = role === "employee" ? nav.filter(([, href]) => routeIsAllowed(href, employeeRoutes)) : nav;
   return (
     <main className="min-h-screen overflow-hidden bg-slate-950 text-white">
@@ -53,7 +61,7 @@ export function AppShell({
       <div className="relative z-10 flex min-h-screen flex-col lg:block">
         <aside className="border-b border-white/10 bg-slate-950/[0.78] p-3 backdrop-blur-2xl lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:h-screen lg:w-80 lg:overflow-hidden lg:border-b-0 lg:border-r lg:p-4">
           <div className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <Link href={dashboardRoute} className="group flex min-w-0 items-center gap-3">
+            <Link href={homeRoute} className="group flex min-w-0 items-center gap-3">
               <BrandLogo className="h-10 w-10" />
               <span className="min-w-0">
                 <span className="block truncate text-base font-black tracking-tight">CRM.Space</span>
@@ -99,7 +107,7 @@ export function AppShell({
               <ChevronDown className="h-4 w-4 transition group-open/nav:rotate-180" />
             </summary>
             <nav className="mt-1 grid max-h-[44vh] gap-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-420px)]">
-              <NavLink href={dashboardRoute} label={t.dashboard} iconKey="Dashboard" />
+              <NavLink href={homeRoute} label={t.dashboard} iconKey="Dashboard" />
               {isMentor && <NavLink href="/dashboard/mentor" label={translateLiteral(locale, "Мои группы")} iconKey="Группы" />}
               {!!pendingAccessCount && (
                 <NavLink href="/dashboard/employees" label={translateLiteral(locale, "Заявки")} iconKey="Employees" badge={pendingAccessCount} />
