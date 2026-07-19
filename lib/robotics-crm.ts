@@ -74,6 +74,7 @@ export const roboticsNav = [
   ["Методика", "/dashboard/education/methods"],
   ["Зарплаты", "/dashboard/education/salaries"],
   ["Команда", "/dashboard/education/team"],
+  ["Управление сотрудниками", "/dashboard/employees"],
   ["Отчёты", "/dashboard/education/reports"],
   ["Настройки", "/dashboard/settings"],
 ] as const;
