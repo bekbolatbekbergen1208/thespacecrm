@@ -3,6 +3,7 @@ import { logout } from "@/app/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
 import { NavLink } from "@/components/app/nav-link";
+import { effectiveEmployeeRoutes, normalizeAllowedRoutes, routeIsAllowed } from "@/lib/employee-permissions";
 import { getIndustryDashboardConfig } from "@/lib/industry-dashboard";
 import { translateLiteral, type getDictionary, type Locale } from "@/lib/i18n";
 import type { Role } from "@/lib/supabase/types";
@@ -15,6 +16,7 @@ export function AppShell({
   inviteCode,
   role,
   position,
+  allowedRoutes = [],
   businessType,
   dashboardRoute,
   dictionary,
@@ -28,6 +30,7 @@ export function AppShell({
   inviteCode: string;
   role: Role;
   position?: string | null;
+  allowedRoutes?: string[];
   businessType?: string | null;
   dashboardRoute: string;
   dictionary: ReturnType<typeof getDictionary>;
@@ -38,6 +41,12 @@ export function AppShell({
   const nav = getIndustryDashboardConfig(businessType).nav;
   const t = dictionary;
   const isMentor = role === "employee" && String(position ?? "").toLowerCase().includes("mentor");
+  const employeeRoutes = effectiveEmployeeRoutes({
+    allowedRoutes: normalizeAllowedRoutes(allowedRoutes),
+    dashboardRoute,
+    position,
+  });
+  const visibleNav = role === "employee" ? nav.filter(([, href]) => routeIsAllowed(href, employeeRoutes)) : nav;
   return (
     <main className="min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_50%_0%,rgba(103,232,249,0.08),transparent_34rem)]" />
@@ -95,7 +104,7 @@ export function AppShell({
               {!!pendingAccessCount && (
                 <NavLink href="/dashboard/employees" label={translateLiteral(locale, "Заявки")} iconKey="Employees" badge={pendingAccessCount} />
               )}
-              {nav.map(([label, href]) => (
+              {visibleNav.map(([label, href]) => (
                 <NavLink key={`${label}-${href}`} href={href} label={translateLiteral(locale, label)} iconKey={label} />
               ))}
               <NavLink href="/dashboard/profile" label={t.profile} iconKey="Profile" />

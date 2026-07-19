@@ -1143,6 +1143,28 @@ export async function deleteEmployee(formData: FormData) {
   redirect("/dashboard/employees?saved=deleted");
 }
 
+export async function updateEmployeePermissions(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/employees?error=${encodeURIComponent("Only founders, admins, and managers can update permissions")}`);
+
+  const memberId = z.string().uuid().parse(value(formData, "memberId"));
+  const allowedRoutes = formData
+    .getAll("allowedRoutes")
+    .filter((item): item is string => typeof item === "string")
+    .filter((route) => route.startsWith("/dashboard"));
+
+  const { error } = await supabase
+    .from("company_members")
+    .update({ allowed_routes: [...new Set(allowedRoutes)] })
+    .eq("id", memberId)
+    .eq("company_id", companyId)
+    .eq("role", "employee");
+
+  if (error) redirect(`/dashboard/employees?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/employees");
+  redirect("/dashboard/employees?saved=permissions");
+}
+
 export async function saveTask(formData: FormData) {
   const { supabase, companyId } = await companyContext();
   const id = value(formData, "id");

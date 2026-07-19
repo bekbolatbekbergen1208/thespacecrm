@@ -32,9 +32,13 @@ create table public.company_members (
   role public.member_role not null default 'employee',
   position text,
   dashboard_route text not null default '/dashboard/other',
+  allowed_routes text[] not null default array[]::text[],
   created_at timestamptz not null default now(),
   unique(company_id, user_id)
 );
+
+alter table public.company_members
+  add column if not exists allowed_routes text[] not null default array[]::text[];
 
 create table public.employee_access_requests (
   id uuid primary key default gen_random_uuid(),

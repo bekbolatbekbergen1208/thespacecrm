@@ -1,7 +1,9 @@
-import { approveEmployeeAccess, deleteEmployee, saveEmployee } from "@/app/actions";
+import { approveEmployeeAccess, deleteEmployee, saveEmployee, updateEmployeePermissions } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { Field, SmallButton } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
+import { routePermissionsFromNav } from "@/lib/employee-permissions";
+import { getIndustryDashboardConfig } from "@/lib/industry-dashboard";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/i18n-server";
 
@@ -17,12 +19,20 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     );
   }
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
-  const [{ data: employees, error: employeesError }, { data: accessRequests, error: requestsError }] = await Promise.all([
+  const permissionOptions = routePermissionsFromNav(getIndustryDashboardConfig(company?.business_type).nav);
+  const [{ data: employees, error: employeesError }, { data: accessRequests, error: requestsError }, { data: members, error: membersError }] = await Promise.all([
     supabase.from("employees").select("*").eq("company_id", membership!.company_id).order("created_at", { ascending: false }),
     canManage(membership!.role)
       ? supabase.from("employee_access_requests").select("*").eq("status", "pending").order("created_at", { ascending: true }).limit(20)
       : Promise.resolve({ data: [], error: null }),
+    supabase.from("company_members").select("id, user_id, role, position").eq("company_id", membership!.company_id),
   ]);
+  const { data: routeRows } = await supabase
+    .from("company_members")
+    .select("id, allowed_routes")
+    .eq("company_id", membership!.company_id);
+  const routesByMemberId = new Map((routeRows ?? []).map((row) => [row.id, Array.isArray(row.allowed_routes) ? row.allowed_routes : []]));
+  const membersByUserId = new Map((members ?? []).map((member) => [member.user_id, { ...member, allowed_routes: routesByMemberId.get(member.id) ?? [] }]));
   const pendingRequests = accessRequests?.filter((request) => request.company_id === membership!.company_id || (!request.company_id && request.company_name.toLowerCase() === company?.name.toLowerCase())) ?? [];
 
   return (
@@ -31,7 +41,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       {params.error && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{params.error}</p>}
       {employeesError && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{employeesError.message}</p>}
       {requestsError && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{requestsError.message}</p>}
+      {membersError && <p className="mb-4 rounded-[8px] border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{membersError.message}</p>}
       {params.saved === "employee" && <p className="mb-4 rounded-[8px] border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">Сотрудник сохранён.</p>}
+      {params.saved === "permissions" && <p className="mb-4 rounded-[8px] border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">Права сотрудника обновлены.</p>}
       {params.saved === "deleted" && <p className="mb-4 rounded-[8px] border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">Сотрудник удалён.</p>}
       {canManage(membership!.role) && (
         <Card className="mb-5">
@@ -74,7 +86,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       )}
       <div className="mt-5 space-y-3">
         {!employees?.length && <EmptyState text={canManage(membership!.role) ? tt("No employees yet. Add employee records above.") : tt("No employees yet.")} />}
-        {employees?.map((employee) => (
+        {employees?.map((employee) => {
+          const member = employee.user_id ? membersByUserId.get(employee.user_id) : null;
+          const allowedRoutes = Array.isArray(member?.allowed_routes) ? member.allowed_routes : [];
+          return (
           <Card key={employee.id}>
             {canManage(membership!.role) ? (
               <>
@@ -91,6 +106,41 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                   <input type="hidden" name="id" value={employee.id} />
                   <SmallButton danger>{tt("Delete employee")}</SmallButton>
                 </form>
+                <div className="mt-4 rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-white">Доступ сотрудника</p>
+                      <p className="mt-1 text-xs text-slate-400">Boss выбирает только те разделы, которые сотрудник должен видеть.</p>
+                    </div>
+                    {member?.role && <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-bold text-cyan-100">{member.role}</span>}
+                  </div>
+                  {member?.id && member.role === "employee" ? (
+                    <form action={updateEmployeePermissions} className="mt-4">
+                      <input type="hidden" name="memberId" value={member.id} />
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {permissionOptions.map((option) => (
+                          <label key={option.href} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-300/30 hover:bg-cyan-300/10">
+                            <input
+                              type="checkbox"
+                              name="allowedRoutes"
+                              value={option.href}
+                              defaultChecked={allowedRoutes.includes(option.href)}
+                              className="h-4 w-4 accent-cyan-300"
+                            />
+                            <span>{tt(option.label)}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mt-4">
+                        <SmallButton>Сохранить доступ</SmallButton>
+                      </div>
+                    </form>
+                  ) : member?.role && member.role !== "employee" ? (
+                    <p className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm text-emerald-100">У роли {member.role} полный доступ.</p>
+                  ) : (
+                    <p className="mt-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">Этот сотрудник ещё не связан с login-аккаунтом. После заявки/подтверждения появятся права доступа.</p>
+                  )}
+                </div>
               </>
             ) : (
               <div className="grid gap-2 text-sm md:grid-cols-4">
@@ -101,7 +151,8 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
               </div>
             )}
           </Card>
-        ))}
+        );
+        })}
       </div>
     </>
   );

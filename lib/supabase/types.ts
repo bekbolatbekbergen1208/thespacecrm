@@ -91,6 +91,7 @@ export type Database = {
           role: Role;
           position: string | null;
           dashboard_route: string;
+          allowed_routes: string[];
           created_at: string;
         };
         Insert: {
@@ -100,12 +101,14 @@ export type Database = {
           role: Role;
           position?: string | null;
           dashboard_route?: string;
+          allowed_routes?: string[];
           created_at?: string;
         };
         Update: {
           role?: Role;
           position?: string | null;
           dashboard_route?: string;
+          allowed_routes?: string[];
         };
         Relationships: [];
       };

@@ -8,6 +8,7 @@ export type MembershipContext = {
   role: Role;
   position: string | null;
   dashboard_route: string;
+  allowed_routes?: string[] | null;
   company_id: string;
   companies:
     | { id: string; name: string; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }
@@ -37,7 +38,18 @@ export const getSessionContext = cache(async function getSessionContext() {
     .limit(1)
     .maybeSingle();
 
-  return { setupMissing: false as const, user, supabase, membership: membership as MembershipContext | null };
+  const membershipRow = membership as Omit<MembershipContext, "allowed_routes"> | null;
+  let allowedRoutes: string[] = [];
+  if (membershipRow?.id) {
+    const { data: permissionRow } = await supabase
+      .from("company_members")
+      .select("allowed_routes")
+      .eq("id", membershipRow.id)
+      .maybeSingle();
+    allowedRoutes = Array.isArray(permissionRow?.allowed_routes) ? permissionRow.allowed_routes : [];
+  }
+
+  return { setupMissing: false as const, user, supabase, membership: membershipRow ? ({ ...membershipRow, allowed_routes: allowedRoutes } as MembershipContext) : null };
 });
 
 export async function requireUser() {
