@@ -391,18 +391,29 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   .mentor-print-table {
     width: 100% !important;
     color: #0f172a !important;
-    font-size: 11px !important;
+    font-size: 9px !important;
+    table-layout: fixed !important;
   }
 
   .mentor-print-table th,
   .mentor-print-table td {
     border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
-    padding: 7px !important;
+    padding: 5px !important;
+    vertical-align: middle !important;
   }
 
   .mentor-print-table thead tr {
     background: #e2e8f0 !important;
+  }
+
+  .mentor-print-day {
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    text-align: center !important;
   }
 
   .print-area h2,

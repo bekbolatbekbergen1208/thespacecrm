@@ -14,13 +14,15 @@ type Row = {
 export default async function MentorWorkspacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string; error?: string; saved?: string }>;
+  searchParams: Promise<{ group?: string; error?: string; saved?: string; from?: string; to?: string; mentor?: string }>;
 }) {
   const [{ supabase, membership, user }, params] = await Promise.all([requireUser(), searchParams]);
   const companyId = membership!.company_id;
   const company = Array.isArray(membership!.companies) ? membership!.companies[0] : membership!.companies;
   const today = new Date().toISOString().slice(0, 10);
-  const printSlots = Array.from({ length: 8 }, (_, index) => index + 1);
+  const periodFrom = isDateInput(params.from) ? String(params.from) : monthStart(today);
+  const periodTo = isDateInput(params.to) ? String(params.to) : today;
+  const printDays = dateRangeDays(periodFrom, periodTo, 31);
 
   const [{ data: profile }, { data: employee }, { data: groups }, { data: students }, { data: lessons }, { data: attendance }, { data: grades }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
@@ -28,7 +30,7 @@ export default async function MentorWorkspacePage({
     supabase.from("robotics_groups").select("*").eq("company_id", companyId).order("name", { ascending: true }),
     supabase.from("robotics_students").select("*").eq("company_id", companyId).order("first_name", { ascending: true }),
     supabase.from("robotics_lessons").select("*").eq("company_id", companyId).eq("lesson_date", today),
-    supabase.from("robotics_attendance").select("*").eq("company_id", companyId).eq("lesson_date", today),
+    supabase.from("robotics_attendance").select("*").eq("company_id", companyId).gte("lesson_date", periodFrom).lte("lesson_date", periodTo).order("lesson_date", { ascending: true }),
     supabase.from("robotics_grades").select("*").eq("company_id", companyId).eq("grade_date", today),
   ]);
 
@@ -38,6 +40,10 @@ export default async function MentorWorkspacePage({
     .map((value) => value.toLowerCase());
   const canSeeAllGroups = canManage(membership!.role);
   const allGroups = (groups ?? []) as Row[];
+  const allMentorNames = Array.from(
+    new Set(allGroups.map((group) => String(group.mentor_name ?? "").trim()).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b, "ru"));
+  const selectedPrintMentor = canSeeAllGroups && params.mentor ? params.mentor : "";
   const visibleGroups = canSeeAllGroups
     ? allGroups
     : allGroups.filter((group) => aliases.some((alias) => String(group.mentor_name ?? "").toLowerCase().includes(alias)));
@@ -48,9 +54,12 @@ export default async function MentorWorkspacePage({
   const todaysLesson = selectedGroup
     ? ((lessons ?? []) as Row[]).find((lesson) => String(lesson.source_group_id ?? "") === selectedGroup.id || String(lesson.group_name ?? "") === String(selectedGroup.name ?? ""))
     : null;
-  const todayAttendance = (attendance ?? []) as Row[];
+  const periodAttendance = (attendance ?? []) as Row[];
+  const todayAttendance = periodAttendance.filter((item) => String(item.lesson_date ?? "") === today);
   const todayGrades = (grades ?? []) as Row[];
-  const printableGroups = visibleGroups.map((group) => {
+  const printableGroups = visibleGroups
+    .filter((group) => !selectedPrintMentor || String(group.mentor_name ?? "") === selectedPrintMentor)
+    .map((group) => {
     const groupName = String(group.name ?? "");
     const rows = ((students ?? []) as Row[]).filter((student) => String(student.group_name ?? "") === groupName);
     return { group, students: rows };
@@ -87,7 +96,7 @@ export default async function MentorWorkspacePage({
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Журнал ментора</p>
             <h2 className="mt-2 text-3xl font-black text-white">Печатный журнал посещаемости</h2>
-            <p className="mt-2 text-sm text-slate-400">{String(company?.name ?? "CRM.Space")} · {mentorName} · {today}</p>
+            <p className="mt-2 text-sm text-slate-400">{String(company?.name ?? "CRM.Space")} · {selectedPrintMentor || mentorName} · {periodFrom} - {periodTo}</p>
           </div>
           <div className="no-print flex flex-wrap gap-2">
             <Link href="/dashboard/education/groups" className="premium-button h-11 border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200 hover:bg-white/[0.08]">
@@ -97,6 +106,34 @@ export default async function MentorWorkspacePage({
           </div>
         </div>
 
+        <form className="no-print mb-5 grid gap-3 rounded-3xl border border-white/10 bg-slate-950/35 p-4 lg:grid-cols-[1fr_1fr_1.3fr_auto] lg:items-end">
+          <input type="hidden" name="group" value={String(params.group ?? "")} />
+          <label>
+            <span className="mb-2 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Начало периода</span>
+            <input name="from" type="date" defaultValue={periodFrom} className="premium-input h-11 w-full px-3 text-sm text-white outline-none" />
+          </label>
+          <label>
+            <span className="mb-2 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Конец периода</span>
+            <input name="to" type="date" defaultValue={periodTo} className="premium-input h-11 w-full px-3 text-sm text-white outline-none" />
+          </label>
+          {canSeeAllGroups ? (
+            <label>
+              <span className="mb-2 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ментор для печати</span>
+              <select name="mentor" defaultValue={selectedPrintMentor} className="premium-input h-11 w-full px-3 text-sm text-white outline-none">
+                <option value="">Все менторы</option>
+                {allMentorNames.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <input type="hidden" name="mentor" value="" />
+          )}
+          <button className="premium-button h-11 justify-center border border-cyan-300/20 bg-cyan-300/10 px-4 text-sm text-cyan-100">
+            Обновить журнал
+          </button>
+        </form>
+
         <div className="mentor-print-cover mb-5 grid gap-3 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4 md:grid-cols-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Компания</p>
@@ -104,15 +141,15 @@ export default async function MentorWorkspacePage({
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Ментор</p>
-            <p className="mt-1 font-black text-white">{mentorName}</p>
+            <p className="mt-1 font-black text-white">{selectedPrintMentor || (canSeeAllGroups ? "Все менторы" : mentorName)}</p>
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Дата</p>
-            <p className="mt-1 font-black text-white">{today}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Период</p>
+            <p className="mt-1 font-black text-white">{periodFrom} - {periodTo}</p>
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Группы</p>
-            <p className="mt-1 font-black text-white">{printableGroups.length}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Дней / групп</p>
+            <p className="mt-1 font-black text-white">{printDays.length} / {printableGroups.length}</p>
           </div>
         </div>
 
@@ -130,7 +167,7 @@ export default async function MentorWorkspacePage({
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-sm font-black text-cyan-100">{groupRows.length} учеников</p>
-                    <p className="mt-1 text-xs text-slate-500">Отметки: Б, НБ, У, О</p>
+                    <p className="mt-1 text-xs text-slate-500">Б - был, НБ - не был, О - опоздал, У - уважительно</p>
                   </div>
                 </div>
               </div>
@@ -142,8 +179,8 @@ export default async function MentorWorkspacePage({
                       <th className="px-4 py-3">Имя ученика</th>
                       <th className="px-4 py-3">Родитель</th>
                       <th className="px-4 py-3">Телефон</th>
-                      {printSlots.map((slot) => (
-                        <th key={slot} className="px-3 py-3 text-center">#{slot}</th>
+                      {printDays.map((day) => (
+                        <th key={day.iso} className="mentor-print-day px-2 py-3 text-center">{day.label}</th>
                       ))}
                       <th className="px-4 py-3">Оценка</th>
                       <th className="px-4 py-3">Комментарий</th>
@@ -152,22 +189,35 @@ export default async function MentorWorkspacePage({
                   <tbody className="divide-y divide-white/10">
                     {!groupRows.length && (
                       <tr>
-                        <td colSpan={14} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
+                        <td colSpan={printDays.length + 6} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
                       </tr>
                     )}
-                    {groupRows.map((student, index) => (
-                      <tr key={student.id}>
-                        <td className="px-4 py-3 font-black text-slate-400">{index + 1}</td>
-                        <td className="px-4 py-3 font-black text-white">{fullName(student)}</td>
-                        <td className="px-4 py-3 text-slate-300">{String(student.parent_name ?? "")}</td>
-                        <td className="px-4 py-3 text-slate-300">{String(student.parent_phone ?? student.whatsapp ?? "")}</td>
-                        {printSlots.map((slot) => (
-                          <td key={slot} className="px-3 py-3 text-center"><span className="print-check-box" /></td>
-                        ))}
-                        <td className="px-4 py-3"><span className="print-line" /></td>
-                        <td className="px-4 py-3"><span className="print-wide-line" /></td>
-                      </tr>
-                    ))}
+                    {groupRows.map((student, index) => {
+                      const name = fullName(student);
+                      return (
+                        <tr key={student.id}>
+                          <td className="px-4 py-3 font-black text-slate-400">{index + 1}</td>
+                          <td className="px-4 py-3 font-black text-white">{name}</td>
+                          <td className="px-4 py-3 text-slate-300">{String(student.parent_name ?? "")}</td>
+                          <td className="px-4 py-3 text-slate-300">{String(student.parent_phone ?? student.whatsapp ?? "")}</td>
+                          {printDays.map((day) => {
+                            const mark = periodAttendance.find(
+                              (item) =>
+                                String(item.student_name ?? "") === name &&
+                                String(item.group_name ?? "") === String(group.name ?? "") &&
+                                String(item.lesson_date ?? "") === day.iso,
+                            );
+                            return (
+                              <td key={day.iso} className="mentor-print-day px-2 py-3 text-center font-black">
+                                {attendanceMark(String(mark?.status ?? ""))}
+                              </td>
+                            );
+                          })}
+                          <td className="px-4 py-3"><span className="print-line" /></td>
+                          <td className="px-4 py-3"><span className="print-wide-line" /></td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -323,4 +373,37 @@ export default async function MentorWorkspacePage({
 
 function fullName(row: Row) {
   return [row.first_name, row.last_name].filter(Boolean).join(" ") || String(row.student_name ?? row.name ?? "-");
+}
+
+function isDateInput(value?: string) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function monthStart(today: string) {
+  return `${today.slice(0, 8)}01`;
+}
+
+function dateRangeDays(from: string, to: string, limit: number) {
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  const safeStart = Number.isNaN(start.getTime()) ? new Date() : start;
+  const safeEnd = Number.isNaN(end.getTime()) || end < safeStart ? safeStart : end;
+  const days: Array<{ iso: string; label: string }> = [];
+  const cursor = new Date(safeStart);
+
+  while (cursor <= safeEnd && days.length < limit) {
+    const iso = cursor.toISOString().slice(0, 10);
+    days.push({ iso, label: iso.slice(8, 10) });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return days;
+}
+
+function attendanceMark(status: string) {
+  if (status === "присутствовал") return "Б";
+  if (status === "отсутствовал") return "НБ";
+  if (status === "опоздал") return "О";
+  if (status === "уважительный") return "У";
+  return "";
 }
