@@ -141,6 +141,42 @@ textarea {
   box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+.premium-input[type="date"],
+.premium-input[type="time"],
+.premium-input[type="month"],
+.premium-input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.premium-input[type="date"]::-webkit-calendar-picker-indicator,
+.premium-input[type="time"]::-webkit-calendar-picker-indicator,
+.premium-input[type="month"]::-webkit-calendar-picker-indicator,
+.premium-input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1) brightness(1.35) saturate(1.2);
+  opacity: 0.86;
+}
+
+.premium-input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.premium-input[type="time"]::-webkit-calendar-picker-indicator:hover,
+.premium-input[type="month"]::-webkit-calendar-picker-indicator:hover,
+.premium-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 .premium-button {
   display: inline-flex;
   align-items: center;
