@@ -108,7 +108,9 @@ export function AppShell({
             </summary>
             <nav className="mt-1 grid max-h-[44vh] gap-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-420px)]">
               <NavLink href={homeRoute} label={t.dashboard} iconKey="Dashboard" />
-              {isMentor && <NavLink href="/dashboard/mentor" label={translateLiteral(locale, "Мои группы")} iconKey="Группы" />}
+              {isMentor && !visibleNav.some(([, href]) => href === "/dashboard/mentor") && (
+                <NavLink href="/dashboard/mentor" label={translateLiteral(locale, "Мои группы")} iconKey="Группы" />
+              )}
               {!!pendingAccessCount && (
                 <NavLink href="/dashboard/employees" label={translateLiteral(locale, "Заявки")} iconKey="Employees" badge={pendingAccessCount} />
               )}

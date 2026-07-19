@@ -62,6 +62,7 @@ export const roboticsNav = [
   ["Расписание", "/dashboard/education/schedule"],
   ["Пробные уроки", "/dashboard/education/trial-lessons"],
   ["Абонементы", "/dashboard/education/subscriptions"],
+  ["Мои группы", "/dashboard/mentor"],
   ["Группы", "/dashboard/education/groups"],
   ["Журнал ментора", "/dashboard/education/mentor-journal"],
   ["Менторы", "/dashboard/education/mentors"],

@@ -10,8 +10,9 @@ export const ALWAYS_ALLOWED_EMPLOYEE_ROUTES = [
 ] as const;
 
 export const EDUCATION_EMPLOYEE_ROUTES = [
-  "/dashboard/education/groups",
+  "/dashboard/mentor",
   "/dashboard/education/attendance",
+  "/dashboard/education/inventory",
 ] as const;
 
 export function normalizeAllowedRoutes(value: unknown): string[] {
