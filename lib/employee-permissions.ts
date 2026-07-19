@@ -12,6 +12,7 @@ export const ALWAYS_ALLOWED_EMPLOYEE_ROUTES = [
 export const EDUCATION_EMPLOYEE_ROUTES = [
   "/dashboard/mentor",
   "/dashboard/education/attendance",
+  "/dashboard/education/trial-lessons",
   "/dashboard/education/inventory",
 ] as const;
 
