@@ -1,6 +1,7 @@
 import {
   assignStudentToGroup,
   assignStudentsToGroup,
+  cancelStudentPayment,
   confirmStudentPayment,
   createLessonsFromGroupSchedule,
   deleteRoboticsRecord,
@@ -369,7 +370,7 @@ function PaymentConfirmPanel({
             const isExpired = remaining <= 0;
             const isLow = remaining > 0 && remaining <= 2;
             return (
-              <div key={student.id} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1fr_160px_180px_150px] lg:items-center ${
+              <div key={student.id} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1fr_150px_170px_240px] lg:items-center ${
                 isExpired ? "border-red-300/30 bg-red-500/10" : isLow ? "border-yellow-300/30 bg-yellow-500/10" : "border-white/10 bg-white/[0.035]"
               }`}>
                 <div>
@@ -384,21 +385,43 @@ function PaymentConfirmPanel({
                   <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Последняя оплата</p>
                   <p className="mt-1 text-sm font-bold text-slate-200">{latestPayment?.paid_at ? String(latestPayment.paid_at) : "Нет оплаты"}</p>
                 </div>
-                <form action={confirmStudentPayment} className="grid gap-2">
-                  <input type="hidden" name="studentName" value={name} />
-                  <input type="hidden" name="groupName" value={String(student.group_name ?? "")} />
-                  <input
-                    type="date"
-                    name="paidAt"
-                    defaultValue={new Date().toISOString().slice(0, 10)}
-                    className="premium-input h-10 px-3 text-sm text-white outline-none"
-                    aria-label="Дата оплаты"
-                  />
-                  <button className="premium-button h-11 w-full bg-emerald-300 px-5 text-sm font-black text-emerald-950 shadow-glow hover:bg-emerald-200">
-                    <Check className="h-4 w-4" />
-                    Оплачено
-                  </button>
-                </form>
+                <div className="grid gap-2">
+                  <form action={confirmStudentPayment} className="grid gap-2 sm:grid-cols-2">
+                    <input type="hidden" name="studentName" value={name} />
+                    <input type="hidden" name="groupName" value={String(student.group_name ?? "")} />
+                    <input
+                      type="date"
+                      name="paidAt"
+                      defaultValue={new Date().toISOString().slice(0, 10)}
+                      className="premium-input h-10 px-3 text-sm text-white outline-none"
+                      aria-label="Дата оплаты"
+                    />
+                    <input
+                      type="number"
+                      name="amount"
+                      min="0"
+                      step="100"
+                      defaultValue={String(Number(latestSubscription?.price ?? latestPayment?.amount ?? 0) || "")}
+                      placeholder="Сумма"
+                      className="premium-input h-10 px-3 text-sm text-white outline-none"
+                      aria-label="Сумма оплаты"
+                    />
+                    <button className="premium-button h-11 w-full bg-emerald-300 px-5 text-sm font-black text-emerald-950 shadow-glow hover:bg-emerald-200 sm:col-span-2">
+                      <Check className="h-4 w-4" />
+                      Оплачено
+                    </button>
+                  </form>
+                  {latestPayment?.id && (
+                    <form action={cancelStudentPayment}>
+                      <input type="hidden" name="paymentId" value={String(latestPayment.id)} />
+                      <input type="hidden" name="studentName" value={name} />
+                      <button className="premium-button h-10 w-full border border-red-300/25 bg-red-500/10 px-4 text-xs font-black text-red-100 hover:bg-red-500/20">
+                        <X className="h-4 w-4" />
+                        Отменить оплату
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
             );
           })}

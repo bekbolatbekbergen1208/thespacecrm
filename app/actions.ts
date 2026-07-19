@@ -1314,6 +1314,7 @@ export async function confirmStudentPayment(formData: FormData) {
   const groupName = value(formData, "groupName") || null;
   const today = new Date().toISOString().slice(0, 10);
   const paidAt = value(formData, "paidAt") || today;
+  const paidAmount = z.coerce.number().min(0).parse(value(formData, "amount") || "0");
 
   const subscription = await supabase
     .from("robotics_subscriptions")
@@ -1325,7 +1326,7 @@ export async function confirmStudentPayment(formData: FormData) {
     .maybeSingle();
 
   const totalLessons = Number(subscription.data?.total_lessons ?? 8) || 8;
-  const price = Number(subscription.data?.price ?? 0) || 0;
+  const price = paidAmount || Number(subscription.data?.price ?? 0) || 0;
   const subscriptionType = String(subscription.data?.subscription_type ?? "Стандарт");
 
   const payment = await supabase.from("robotics_payments").insert({
@@ -1336,7 +1337,7 @@ export async function confirmStudentPayment(formData: FormData) {
     paid_at: paidAt,
     method: "Kaspi",
     status: "оплачено",
-    comment: `Подтверждено: ${totalLessons} занятий`,
+    comment: `Подтверждено: ${totalLessons} занятий. Сумма: ${price} ₸`,
   });
 
   if (payment.error) redirect(`/dashboard/education/payments?error=${encodeURIComponent(payment.error.message)}`);
@@ -1363,6 +1364,50 @@ export async function confirmStudentPayment(formData: FormData) {
       .insert({ ...subscriptionPayload, company_id: companyId, student_name: studentName });
 
   if (subscriptionResult.error) redirect(`/dashboard/education/payments?error=${encodeURIComponent(subscriptionResult.error.message)}`);
+
+  revalidatePath("/dashboard/education/payments");
+  revalidatePath("/dashboard/education/subscriptions");
+  revalidatePath("/dashboard/education/attendance");
+}
+
+export async function cancelStudentPayment(formData: FormData) {
+  const { supabase, companyId } = await companyContext();
+  const paymentId = z.string().min(1).parse(value(formData, "paymentId"));
+  const studentName = z.string().min(1).parse(value(formData, "studentName"));
+
+  const paymentResult = await supabase
+    .from("robotics_payments")
+    .update({
+      status: "не оплачено",
+      amount: 0,
+      comment: "Оплата отменена администратором",
+    })
+    .eq("id", paymentId)
+    .eq("company_id", companyId);
+
+  if (paymentResult.error) redirect(`/dashboard/education/payments?error=${encodeURIComponent(paymentResult.error.message)}`);
+
+  const subscription = await supabase
+    .from("robotics_subscriptions")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("student_name", studentName)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (subscription.data?.id) {
+    const subscriptionResult = await supabase
+      .from("robotics_subscriptions")
+      .update({
+        remaining_lessons: 0,
+        status: "past_due",
+      })
+      .eq("id", subscription.data.id)
+      .eq("company_id", companyId);
+
+    if (subscriptionResult.error) redirect(`/dashboard/education/payments?error=${encodeURIComponent(subscriptionResult.error.message)}`);
+  }
 
   revalidatePath("/dashboard/education/payments");
   revalidatePath("/dashboard/education/subscriptions");
