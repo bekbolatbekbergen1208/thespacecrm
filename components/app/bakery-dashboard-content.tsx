@@ -1,11 +1,11 @@
-import { markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryVehicle } from "@/app/actions";
+import { markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryClient, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryVehicle } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
 import { normalizeIndustry } from "@/lib/industries";
-import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Truck } from "lucide-react";
+import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Truck, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 type BakeryRow = {
@@ -27,6 +27,7 @@ export type BakerySection =
   | "suppliers"
   | "debts"
   | "delivery"
+  | "clients"
   | "shops";
 
 const prices = {
@@ -77,9 +78,10 @@ export async function BakeryDashboardContent({
   const needsExpenses = section === "expenses" || needsReports;
   const needsProductSales = section === "products" || needsReports;
   const needsDelivery = section === "delivery";
+  const needsClients = section === "clients" || section === "delivery" || needsAssistant;
   const emptyResult = Promise.resolve({ data: null });
 
-  const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }, { data: products }, { data: productSales }, { data: vehicles }, { data: routes }] = await Promise.all([
+  const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }, { data: products }, { data: productSales }, { data: vehicles }, { data: routes }, { data: clients }] = await Promise.all([
     needsShops
       ? supabase.from("bakery_shops").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
       : emptyResult,
@@ -107,6 +109,9 @@ export async function BakeryDashboardContent({
     needsDelivery
       ? supabase.from("bakery_delivery_routes").select("*").eq("company_id", companyId).order("route_date", { ascending: false }).limit(500)
       : emptyResult,
+    needsClients
+      ? supabase.from("bakery_clients").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
+      : emptyResult,
   ]);
 
   const shopRows = ((shops ?? []) as BakeryRow[]).filter((shop) => {
@@ -114,6 +119,11 @@ export async function BakeryDashboardContent({
     return !query || text.includes(query);
   });
   const allShopRows = (shops ?? []) as BakeryRow[];
+  const allClientRows = (clients ?? []) as BakeryRow[];
+  const clientRows = allClientRows.filter((client) => {
+    const text = [client.name, client.address, client.phone, client.loyalty_info, client.notes].join(" ").toLowerCase();
+    return !query || text.includes(query);
+  });
   const stockRows = (stock ?? []) as BakeryRow[];
   const saleRows = (sales ?? []) as BakeryRow[];
   const supplierRows = ((suppliers ?? []) as BakeryRow[]).filter((supplier) => {
@@ -210,6 +220,7 @@ export async function BakeryDashboardContent({
       {params.saved === "product" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Товар сохранён.</p>}
       {params.saved === "product-sale" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Продажа товара сохранена.</p>}
       {params.saved === "vehicle" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Авто доставки сохранено.</p>}
+      {params.saved === "client" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Клиент производства сохранён.</p>}
       {params.saved === "route" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Маршрут доставки сохранён.</p>}
 
       <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
@@ -732,6 +743,78 @@ export async function BakeryDashboardContent({
         </div>
       </Card>
 
+      <Card id="clients" className={`${sectionClass(section, "clients")} mb-5 scroll-mt-6 overflow-hidden`}>
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
+              <UsersRound className="h-4 w-4" />
+              Клиенты производства
+            </p>
+            <h2 className="mt-1 text-xl font-black text-white">Клиенты, адреса и лояльность</h2>
+            <p className="mt-1 text-sm text-slate-400">Добавляйте заказчиков с адресами. Эти адреса можно выбрать при создании маршрута доставки.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">{clientRows.length} клиентов</span>
+            <span className="rounded-full border border-white/10 bg-slate-950/35 px-3 py-1 text-xs font-black text-slate-200">{clientRows.filter((client) => client.address).length} адресов</span>
+          </div>
+        </div>
+
+        {editable && (
+          <form action={saveBakeryClient} className="mb-5 rounded-3xl border border-cyan-300/15 bg-slate-950/35 p-4">
+            <h3 className="text-lg font-black text-white">Добавить клиента</h3>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Field label="Имя / компания" name="name" />
+              <Field label="Телефон" name="phone" required={false} />
+              <Field label="Адрес" name="address" />
+              <Select label="Статус" name="status" defaultValue="active">
+                <option value="active">Активный</option>
+                <option value="vip">VIP</option>
+                <option value="paused">Пауза</option>
+              </Select>
+              <Field label="Latitude для 2GIS" name="latitude" type="number" required={false} />
+              <Field label="Longitude для 2GIS" name="longitude" type="number" required={false} />
+              <div className="xl:col-span-2"><Textarea label="Инфо о лояльности" name="loyaltyInfo" /></div>
+              <div className="md:col-span-2 xl:col-span-4"><Textarea label="Заметки" name="notes" /></div>
+              <div className="md:col-span-2 xl:col-span-4"><SmallButton>Сохранить клиента</SmallButton></div>
+            </div>
+          </form>
+        )}
+
+        <div className="grid gap-3 xl:grid-cols-2">
+          {!clientRows.length && <EmptyState text="Клиентов пока нет. Добавьте первого клиента производства." />}
+          {clientRows.map((client) => (
+            <details key={client.id} className="group rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <summary className="cursor-pointer list-none">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-black text-white">{String(client.name ?? "Клиент")}</p>
+                    <p className="mt-1 text-xs text-slate-500">{String(client.phone ?? "Телефон не указан")} • {String(client.address ?? "Адрес не указан")}</p>
+                  </div>
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">{String(client.status ?? "active")}</span>
+                </div>
+              </summary>
+              <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 text-sm">
+                <MiniPill label="Адрес" value={String(client.address ?? "-")} />
+                <MiniPill label="Лояльность" value={String(client.loyalty_info ?? "Нет данных")} />
+                <MiniPill label="Заметки" value={String(client.notes ?? "Нет заметок")} />
+                <div className="flex flex-wrap gap-2">
+                  <a href={twoGisShopHref(client)} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-2 rounded-full bg-cyan-300 px-3 py-1.5 text-xs font-black text-cyan-950 transition hover:bg-cyan-200">
+                    <MapPinned className="h-3.5 w-3.5" />
+                    Открыть 2GIS
+                  </a>
+                  {client.phone ? (
+                    <a href={whatsappHref(client.phone, `Здравствуйте! Это по доставке от ${company?.name ?? "CRM.Space"}.`)} target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-300 px-3 py-1.5 text-xs font-black text-emerald-950 transition hover:bg-emerald-200">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      WhatsApp
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </details>
+          ))}
+        </div>
+      </Card>
+
       <Card id="delivery" className={`${sectionClass(section, "delivery")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -739,8 +822,8 @@ export async function BakeryDashboardContent({
               <Route className="h-4 w-4" />
               Служба доставки
             </p>
-            <h2 className="mt-1 text-xl font-black text-white">Авто, водители и маршруты по адресам магазинов</h2>
-            <p className="mt-1 text-sm text-slate-400">Выберите магазины, и CRM соберёт маршрут для водителя. 2GIS строит точный путь по координатам, Maps работает по адресам.</p>
+            <h2 className="mt-1 text-xl font-black text-white">Авто, водители и маршруты по адресам клиентов</h2>
+            <p className="mt-1 text-sm text-slate-400">Выберите клиентов или магазины, и CRM соберёт маршрут для водителя. 2GIS строит точный путь по координатам, Maps работает по адресам.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
@@ -755,7 +838,7 @@ export async function BakeryDashboardContent({
         <div className="mb-5 grid gap-4 md:grid-cols-3">
           <Metric title="Авто" value={vehicleRows.length} note="в службе доставки" icon={<Car className="h-4 w-4" />} />
           <Metric title="Маршруты сегодня" value={dayRoutes.length} note={selectedDate} icon={<Route className="h-4 w-4" />} />
-          <Metric title="Магазины с адресом" value={allShopRows.filter((shop) => shop.address).length} note="можно добавить в маршрут" icon={<MapPinned className="h-4 w-4" />} />
+          <Metric title="Точки с адресом" value={allShopRows.filter((shop) => shop.address).length + allClientRows.filter((client) => client.address).length} note="клиенты и магазины" icon={<MapPinned className="h-4 w-4" />} />
         </div>
 
         {editable && (
@@ -798,9 +881,19 @@ export async function BakeryDashboardContent({
                   <option value="done">Завершён</option>
                 </Select>
                 <div className="md:col-span-2">
-                  <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Магазины маршрута</p>
+                  <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Клиенты и магазины маршрута</p>
                   <div className="grid max-h-72 gap-2 overflow-auto rounded-3xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-2">
-                    {!allShopRows.length && <p className="text-sm text-slate-400 md:col-span-2">Сначала добавьте магазины.</p>}
+                    {!allClientRows.length && !allShopRows.length && <p className="text-sm text-slate-400 md:col-span-2">Сначала добавьте клиентов или магазины.</p>}
+                    {allClientRows.map((client) => (
+                      <label key={client.id} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.04] p-3 transition hover:bg-cyan-300/[0.08]">
+                        <input name="clientIds" type="checkbox" value={client.id} className="mt-1 h-4 w-4 accent-cyan-300" />
+                        <span>
+                          <span className="block font-black text-white">{String(client.name ?? "Клиент")}</span>
+                          <span className="mt-1 block text-xs text-slate-500">{String(client.address ?? "Адрес не указан")}</span>
+                          <span className="mt-1 block text-[11px] font-black text-cyan-100">Клиент • {String(client.phone ?? "телефон не указан")}</span>
+                        </span>
+                      </label>
+                    ))}
                     {allShopRows.map((shop) => (
                       <label key={shop.id} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3 transition hover:bg-white/[0.06]">
                         <input name="shopIds" type="checkbox" value={shop.id} className="mt-1 h-4 w-4 accent-cyan-300" />
@@ -851,7 +944,9 @@ export async function BakeryDashboardContent({
               {!dayRoutes.length && <EmptyState text="На выбранный день маршрутов нет." />}
               {dayRoutes.map((route) => {
                 const routeShops = shopsForRoute(route, allShopRows);
-                const optimizedRouteShops = optimizeRouteShops(routeShops);
+                const routeClients = clientsForRoute(route, allClientRows);
+                const routePoints = [...routeClients, ...routeShops];
+                const optimizedRouteShops = optimizeRouteShops(routePoints);
                 const vehicle = vehicleRows.find((item) => item.id === route.vehicle_id);
                 const mapsHref = googleMapsRouteHref(optimizedRouteShops);
                 const dgisHref = twoGisRouteHref(optimizedRouteShops);
@@ -864,7 +959,7 @@ export async function BakeryDashboardContent({
                           <p className="font-black text-white">{String(route.route_name ?? "Маршрут")}</p>
                           <p className="mt-1 text-xs text-slate-500">{String(route.route_date ?? "")} • {String(vehicle?.name ?? "Авто не выбрано")} • {String(route.driver_name ?? vehicle?.driver_name ?? "Водитель не указан")}</p>
                         </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">{routeShops.length} точек</span>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">{routePoints.length} точек</span>
                       </div>
                     </summary>
                     <div className="mt-4 border-t border-white/10 pt-4">
@@ -873,8 +968,10 @@ export async function BakeryDashboardContent({
                           <div key={shop.id} className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div>
-                                <p className="font-black text-white">#{index + 1} {String(shop.name ?? "Магазин")}</p>
+                                <p className="font-black text-white">#{index + 1} {String(shop.name ?? "Точка")}</p>
                                 <p className="mt-1 text-xs text-slate-500">{String(shop.address ?? "Адрес не указан")}</p>
+                                {shop.phone && <p className="mt-1 text-[11px] font-semibold text-slate-400">Телефон: {String(shop.phone)}</p>}
+                                {shop.loyalty_info && <p className="mt-1 text-[11px] font-semibold text-emerald-100/80">Лояльность: {String(shop.loyalty_info)}</p>}
                                 {hasShopCoordinates(shop) && (
                                   <p className="mt-1 text-[11px] font-semibold text-cyan-100/80">
                                     2GIS: {String(shop.latitude)}, {String(shop.longitude)}
@@ -888,7 +985,7 @@ export async function BakeryDashboardContent({
                           </div>
                         ))}
                       </div>
-                      {routeShops.length > 1 && (
+                      {routePoints.length > 1 && (
                         <p className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-xs font-semibold leading-5 text-cyan-50">
                           CRM поставила точки в рекомендованном порядке. Если у всех точек есть координаты, 2GIS откроет маршрут сразу.
                         </p>
@@ -1106,6 +1203,7 @@ const bakerySections: Array<{ key: BakerySection; label: string; href: string; n
   { key: "suppliers", label: "Поставщики", href: "/dashboard/bakery/suppliers", note: "поставки и долги" },
   { key: "debts", label: "Долги", href: "/dashboard/bakery/debts", note: "пока не оплачено" },
   { key: "delivery", label: "Доставка", href: "/dashboard/bakery/delivery", note: "авто и маршруты" },
+  { key: "clients", label: "Клиенты", href: "/dashboard/bakery/clients", note: "адреса для маршрутов" },
   { key: "shops", label: "Магазины", href: "/dashboard/bakery/shops", note: "работа с точками" },
   { key: "assistant", label: "AI ассистент", href: "/dashboard/bakery/assistant", note: "вопросы по данным" },
 ];
@@ -1595,6 +1693,16 @@ function shopsForRoute(route: BakeryRow, shops: BakeryRow[]) {
   return ids
     .map((id) => shops.find((shop) => shop.id === id))
     .filter((shop): shop is BakeryRow => Boolean(shop));
+}
+
+function clientsForRoute(route: BakeryRow, clients: BakeryRow[]) {
+  const ids = String(route.client_ids ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return ids
+    .map((id) => clients.find((client) => client.id === id))
+    .filter((client): client is BakeryRow => Boolean(client));
 }
 
 function shopCoordinates(shop: BakeryRow) {

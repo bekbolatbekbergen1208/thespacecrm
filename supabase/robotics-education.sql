@@ -204,6 +204,20 @@ create table if not exists public.bakery_vehicles (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.bakery_clients (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  name text not null,
+  phone text,
+  address text not null,
+  latitude numeric(10,7),
+  longitude numeric(10,7),
+  loyalty_info text,
+  notes text,
+  status text not null default 'active',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.bakery_delivery_routes (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -212,16 +226,19 @@ create table if not exists public.bakery_delivery_routes (
   vehicle_id uuid references public.bakery_vehicles(id) on delete set null,
   driver_name text,
   shop_ids text not null default '',
+  client_ids text not null default '',
   status text not null default 'planned',
   notes text,
   created_at timestamptz not null default now()
 );
 
+alter table public.bakery_delivery_routes add column if not exists client_ids text not null default '';
+
 do $$
 declare
   tbl text;
 begin
-  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses','bakery_products','bakery_product_sales','bakery_vehicles','bakery_delivery_routes']
+  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses','bakery_products','bakery_product_sales','bakery_vehicles','bakery_clients','bakery_delivery_routes']
   loop
     execute format('alter table public.%I enable row level security', tbl);
     execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);

@@ -568,6 +568,33 @@ export async function saveBakeryVehicle(formData: FormData) {
   redirect("/dashboard/bakery/delivery?saved=vehicle");
 }
 
+export async function saveBakeryClient(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/bakery/clients?error=${encodeURIComponent("Только founder/admin/manager может добавлять клиентов")}`);
+
+  const id = value(formData, "id");
+  const payload = {
+    name: z.string().min(2).parse(value(formData, "name")),
+    phone: value(formData, "phone") || null,
+    address: z.string().min(3).parse(value(formData, "address")),
+    latitude: value(formData, "latitude") ? numberValue(formData, "latitude") : null,
+    longitude: value(formData, "longitude") ? numberValue(formData, "longitude") : null,
+    loyalty_info: value(formData, "loyaltyInfo") || null,
+    notes: value(formData, "notes") || null,
+    status: value(formData, "status") || "active",
+  };
+
+  const result = id
+    ? await supabase.from("bakery_clients").update(payload).eq("id", id).eq("company_id", companyId)
+    : await supabase.from("bakery_clients").insert({ ...payload, company_id: companyId });
+
+  if (result.error) redirect(`/dashboard/bakery/clients?error=${encodeURIComponent(result.error.message)}`);
+  revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/clients");
+  revalidatePath("/dashboard/bakery/delivery");
+  redirect("/dashboard/bakery/clients?saved=client");
+}
+
 export async function saveBakeryDeliveryRoute(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
   if (!canManage(role)) redirect(`/dashboard/bakery/delivery?error=${encodeURIComponent("Только founder/admin/manager может создавать маршруты")}`);
@@ -576,9 +603,12 @@ export async function saveBakeryDeliveryRoute(formData: FormData) {
   const shopIds = formData
     .getAll("shopIds")
     .filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  const clientIds = formData
+    .getAll("clientIds")
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 
-  if (!shopIds.length) {
-    redirect(`/dashboard/bakery/delivery?date=${encodeURIComponent(routeDate)}&error=${encodeURIComponent("Выберите хотя бы один магазин для маршрута")}`);
+  if (!shopIds.length && !clientIds.length) {
+    redirect(`/dashboard/bakery/delivery?date=${encodeURIComponent(routeDate)}&error=${encodeURIComponent("Выберите хотя бы один магазин или клиента для маршрута")}`);
   }
 
   const payload = {
@@ -588,6 +618,7 @@ export async function saveBakeryDeliveryRoute(formData: FormData) {
     vehicle_id: value(formData, "vehicleId") || null,
     driver_name: value(formData, "driverName") || null,
     shop_ids: shopIds.join(","),
+    client_ids: clientIds.join(","),
     status: value(formData, "status") || "planned",
     notes: value(formData, "notes") || null,
   };
