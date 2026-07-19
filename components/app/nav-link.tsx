@@ -40,6 +40,7 @@ const iconByLabel: Record<string, LucideIcon> = {
   Методика: FileText,
   Зарплаты: CreditCard,
   Команда: Users,
+  "Управление сотрудниками": Users,
   Отчёты: BarChart3,
   Настройки: Settings,
   Поставщики: BriefcaseBusiness,
