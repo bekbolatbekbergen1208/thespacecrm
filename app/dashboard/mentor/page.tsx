@@ -178,7 +178,6 @@ export default async function MentorWorkspacePage({
                       <th className="w-12 px-4 py-3">№</th>
                       <th className="px-4 py-3">Имя ученика</th>
                       <th className="px-4 py-3">Родитель</th>
-                      <th className="px-4 py-3">Телефон</th>
                       {printDays.map((day) => (
                         <th key={day.iso} className="mentor-print-day px-2 py-3 text-center">{day.label}</th>
                       ))}
@@ -189,7 +188,7 @@ export default async function MentorWorkspacePage({
                   <tbody className="divide-y divide-white/10">
                     {!groupRows.length && (
                       <tr>
-                        <td colSpan={printDays.length + 6} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
+                        <td colSpan={printDays.length + 5} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
                       </tr>
                     )}
                     {groupRows.map((student, index) => {
@@ -199,7 +198,6 @@ export default async function MentorWorkspacePage({
                           <td className="px-4 py-3 font-black text-slate-400">{index + 1}</td>
                           <td className="px-4 py-3 font-black text-white">{name}</td>
                           <td className="px-4 py-3 text-slate-300">{String(student.parent_name ?? "")}</td>
-                          <td className="px-4 py-3 text-slate-300">{String(student.parent_phone ?? student.whatsapp ?? "")}</td>
                           {printDays.map((day) => {
                             const mark = periodAttendance.find(
                               (item) =>
