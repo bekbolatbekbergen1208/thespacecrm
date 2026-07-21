@@ -55,16 +55,21 @@ export type RoboticsModule = {
 };
 
 
-export const roboticsNav = [
+export const roboticsPrimaryNav = [
   ["Ученики", "/dashboard/education/students"],
-  ["Оплаты", "/dashboard/education/payments"],
-  ["Посещаемость", "/dashboard/education/attendance"],
-  ["Расписание", "/dashboard/education/schedule"],
-  ["Пробные уроки", "/dashboard/education/trial-lessons"],
-  ["Абонементы", "/dashboard/education/subscriptions"],
-  ["Мои группы", "/dashboard/mentor"],
   ["Группы", "/dashboard/education/groups"],
+  ["Расписание", "/dashboard/education/schedule"],
+  ["Посещаемость", "/dashboard/education/attendance"],
+  ["Пробные уроки", "/dashboard/education/trial-lessons"],
+  ["Оплаты", "/dashboard/education/payments"],
+  ["Мои группы", "/dashboard/mentor"],
   ["Журнал ментора", "/dashboard/education/mentor-journal"],
+  ["Управление сотрудниками", "/dashboard/employees"],
+  ["Отчёты", "/dashboard/education/reports"],
+] as const;
+
+export const roboticsSecondaryNav = [
+  ["Абонементы", "/dashboard/education/subscriptions"],
   ["Менторы", "/dashboard/education/mentors"],
   ["Договор", "/dashboard/education/contract"],
   ["Семьи", "/dashboard/education/families"],
@@ -75,10 +80,10 @@ export const roboticsNav = [
   ["Методика", "/dashboard/education/methods"],
   ["Зарплаты", "/dashboard/education/salaries"],
   ["Команда", "/dashboard/education/team"],
-  ["Управление сотрудниками", "/dashboard/employees"],
-  ["Отчёты", "/dashboard/education/reports"],
   ["Настройки", "/dashboard/settings"],
 ] as const;
+
+export const roboticsNav = [...roboticsPrimaryNav, ...roboticsSecondaryNav] as const;
 
 export const roboticsModules: Record<RoboticsModuleKey, RoboticsModule> = {
   students: {

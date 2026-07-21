@@ -1,5 +1,5 @@
 import { dashboardRouteForIndustry, normalizeIndustry, type BusinessIndustry } from "@/lib/industries";
-import { roboticsNav } from "@/lib/robotics-crm";
+import { roboticsPrimaryNav } from "@/lib/robotics-crm";
 
 export type IndustryDashboardConfig = {
   industry: BusinessIndustry;
@@ -53,7 +53,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
     route: "/dashboard/education",
     title: "Education Dashboard",
     description: "Students, teachers, courses, attendance, payments, and reports for learning centers.",
-    nav: roboticsNav.map(([label, href]) => [label, href]),
+    nav: roboticsPrimaryNav.map(([label, href]) => [label, href]),
     stats: [{ label: "Students", value: "Enrollment", note: "Learner pipeline" }, { label: "Courses", value: "Schedule", note: "Classes and tasks" }, { label: "Payments", value: "Receivables", note: "Track tuition flow" }],
     windows: [{ title: "Ученики", href: "/dashboard/education/students", metric: "Roster", detail: "Manage student records and cards." }, { title: "Менторы", href: "/dashboard/education/mentors", metric: "Faculty", detail: "Manage teachers, mentors, and schedules." }, { title: "Расписание", href: "/dashboard/education/schedule", metric: "Calendar", detail: "Track lessons, course work, and attendance." }, { title: "Оплаты", href: "/dashboard/education/payments", metric: "Finance", detail: "Monitor payment reports and collection priorities." }],
     reports: ["Attendance summary", "Payment follow-up", "Teacher workload", "Course progress"],
