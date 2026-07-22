@@ -1736,7 +1736,7 @@ export async function saveMentorLessonSession(formData: FormData) {
   const lessonTime = value(formData, "lessonTime") || "10:00";
   const lessonEndTime = value(formData, "lessonEndTime") || null;
   const room = value(formData, "room") || "Кабинет";
-  const topic = z.string().min(2).parse(value(formData, "topic"));
+  const topic = value(formData, "topic").trim() || "Тема не указана";
   const studentNames = formData.getAll("studentName").filter((item): item is string => typeof item === "string");
 
   const existingLesson = await supabase
@@ -1772,10 +1772,12 @@ export async function saveMentorLessonSession(formData: FormData) {
   const lessonId = lessonResult.data.id;
 
   for (const studentName of studentNames) {
-    const status = z.enum(["присутствовал", "отсутствовал", "опоздал", "уважительный"]).parse(value(formData, `status:${studentName}`) || "присутствовал");
+    const statusResult = z.enum(["присутствовал", "отсутствовал", "опоздал", "уважительный"]).safeParse(value(formData, `status:${studentName}`) || "присутствовал");
+    const status = statusResult.success ? statusResult.data : "присутствовал";
     const comment = value(formData, `comment:${studentName}`) || null;
     const scoreRaw = value(formData, `score:${studentName}`);
-    const score = scoreRaw ? z.coerce.number().min(0).max(100).parse(scoreRaw) : null;
+    const scoreResult = scoreRaw ? z.coerce.number().min(0).max(100).safeParse(scoreRaw) : null;
+    const score = scoreResult?.success ? scoreResult.data : null;
     const gradeComment = value(formData, `gradeComment:${studentName}`) || null;
 
     const existingAttendance = await supabase
