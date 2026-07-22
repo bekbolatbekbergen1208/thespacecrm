@@ -640,6 +640,65 @@ export async function saveBakeryDeliveryRoute(formData: FormData) {
   redirect(`/dashboard/bakery/delivery?date=${encodeURIComponent(routeDate)}&saved=route`);
 }
 
+export async function saveBakeryTask(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/bakery/tasks?error=${encodeURIComponent("Только founder/admin/manager может добавлять задачи")}`);
+
+  const department = value(formData, "department") || "base";
+  const status = value(formData, "status") || "new";
+  const payload = {
+    company_id: companyId,
+    title: z.string().min(2).parse(value(formData, "title")),
+    department,
+    priority: value(formData, "priority") || "medium",
+    status,
+    assignee: value(formData, "assignee") || null,
+    due_date: value(formData, "dueDate") || null,
+    notes: value(formData, "notes") || null,
+  };
+
+  const { error } = await supabase.from("bakery_tasks").insert(payload);
+  if (error) redirect(`/dashboard/bakery/tasks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/tasks");
+  redirect(`/dashboard/bakery/tasks?department=${encodeURIComponent(department)}&taskStatus=${encodeURIComponent(status)}&saved=task`);
+}
+
+export async function updateBakeryTaskStatus(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/bakery/tasks?error=${encodeURIComponent("Только founder/admin/manager может менять задачи")}`);
+
+  const taskId = z.string().uuid().parse(value(formData, "taskId"));
+  const status = value(formData, "status") || "new";
+  const { error } = await supabase
+    .from("bakery_tasks")
+    .update({ status })
+    .eq("id", taskId)
+    .eq("company_id", companyId);
+
+  if (error) redirect(`/dashboard/bakery/tasks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/tasks");
+  redirect("/dashboard/bakery/tasks?saved=task");
+}
+
+export async function deleteBakeryTask(formData: FormData) {
+  const { supabase, companyId, role } = await companyContext();
+  if (!canManage(role)) redirect(`/dashboard/bakery/tasks?error=${encodeURIComponent("Только founder/admin/manager может удалять задачи")}`);
+
+  const taskId = z.string().uuid().parse(value(formData, "taskId"));
+  const { error } = await supabase
+    .from("bakery_tasks")
+    .delete()
+    .eq("id", taskId)
+    .eq("company_id", companyId);
+
+  if (error) redirect(`/dashboard/bakery/tasks?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/dashboard/bakery");
+  revalidatePath("/dashboard/bakery/tasks");
+  redirect("/dashboard/bakery/tasks?saved=task-deleted");
+}
+
 export async function saveBakeryStock(formData: FormData) {
   const { supabase, companyId, role } = await companyContext();
   if (!canManage(role)) redirect(`/dashboard/bakery?error=${encodeURIComponent("Водитель не может изменять общий продукт")}`);

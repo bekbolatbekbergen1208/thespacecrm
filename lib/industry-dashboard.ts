@@ -97,6 +97,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
       ["Продукция", "/dashboard/bakery/products"],
       ["Денежный отчёт", "/dashboard/bakery/money"],
       ["Расходы", "/dashboard/bakery/expenses"],
+      ["Задачи", "/dashboard/bakery/tasks"],
       ["Производство", "/dashboard/bakery/production"],
       ["Склад", "/dashboard/bakery/stock"],
       ["Поставщики", "/dashboard/bakery/suppliers"],
@@ -108,7 +109,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
       ["Настройки", "/dashboard/settings"],
     ],
     stats: [{ label: "Производство", value: "Выпуск", note: "Продукция за день" }, { label: "Склад", value: "Остатки", note: "Продажи и возвраты" }, { label: "Финансы", value: "Отчёты", note: "Нал, Kaspi, расходы" }],
-    windows: [{ title: "Производство", href: "/dashboard/bakery/production", metric: "Output", detail: "Записывайте выпуск продукции за день." }, { title: "Склад", href: "/dashboard/bakery/stock", metric: "Stock", detail: "Контролируйте остатки после продаж и возвратов." }, { title: "Доставка", href: "/dashboard/bakery/delivery", metric: "Routes", detail: "Авто, водители и маршруты по точкам." }, { title: "Деньги", href: "/dashboard/bakery/money", metric: "Finance", detail: "Выручка, расходы, прибыль и CSV." }],
+    windows: [{ title: "Производство", href: "/dashboard/bakery/production", metric: "Output", detail: "Записывайте выпуск продукции за день." }, { title: "Задачи", href: "/dashboard/bakery/tasks", metric: "Departments", detail: "База, бухгалтерия, операционный и хозяйственный отдел." }, { title: "Склад", href: "/dashboard/bakery/stock", metric: "Stock", detail: "Контролируйте остатки после продаж и возвратов." }, { title: "Доставка", href: "/dashboard/bakery/delivery", metric: "Routes", detail: "Авто, водители и маршруты по точкам." }, { title: "Деньги", href: "/dashboard/bakery/money", metric: "Finance", detail: "Выручка, расходы, прибыль и CSV." }],
     reports: ["Производство за день", "Остатки", "Доставка", "Денежный отчёт"],
   },
   "Restaurant / Cafe": {

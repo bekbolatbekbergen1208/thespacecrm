@@ -1,11 +1,11 @@
-import { deleteBakeryProduct, markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryClient, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryVehicle } from "@/app/actions";
+import { deleteBakeryProduct, deleteBakeryTask, markBakeryProductSold, markBakeryShopDebtPaid, saveBakeryClient, saveBakeryDeliveryRoute, saveBakeryExpense, saveBakeryProduct, saveBakerySale, saveBakeryShop, saveBakeryStock, saveBakerySupplier, saveBakeryTask, saveBakeryVehicle, updateBakeryTaskStatus } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
 import { normalizeIndustry } from "@/lib/industries";
-import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Trash2, Truck, UsersRound } from "lucide-react";
+import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, ClipboardList, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Trash2, Truck, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 type BakeryRow = {
@@ -28,6 +28,7 @@ export type BakerySection =
   | "debts"
   | "delivery"
   | "clients"
+  | "tasks"
   | "shops";
 
 const prices = {
@@ -45,8 +46,28 @@ const expenseCategories = [
   ["other", "Прочие расходы"],
 ] as const;
 
+const manufacturingTaskDepartments = [
+  ["base", "База"],
+  ["accounting", "Бухгалтерия"],
+  ["operations", "Операционный отдел"],
+  ["household", "Хозяйственный отдел"],
+] as const;
+
+const manufacturingTaskStatuses = [
+  ["new", "Новая"],
+  ["in_progress", "В работе"],
+  ["done", "Готово"],
+] as const;
+
+const manufacturingTaskPriorities = [
+  ["low", "Низкий"],
+  ["medium", "Средний"],
+  ["high", "Высокий"],
+  ["urgent", "Срочно"],
+] as const;
+
 export default async function BakeryDashboardPage(props: {
-  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string; department?: string; taskStatus?: string }>;
 }) {
   return <BakeryDashboardContent {...props} section="overview" />;
 }
@@ -55,7 +76,7 @@ export async function BakeryDashboardContent({
   searchParams,
   section = "overview",
 }: {
-  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string; department?: string; taskStatus?: string }>;
   section?: BakerySection;
 }) {
   const [{ supabase, membership }, params] = await Promise.all([requireUser(), searchParams]);
@@ -79,9 +100,10 @@ export async function BakeryDashboardContent({
   const needsProductSales = section === "products" || needsReports;
   const needsDelivery = section === "delivery";
   const needsClients = section === "clients" || section === "delivery" || needsAssistant;
+  const needsTasks = section === "tasks";
   const emptyResult = Promise.resolve({ data: null });
 
-  const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }, { data: products }, { data: productSales }, { data: vehicles }, { data: routes }, { data: clients }] = await Promise.all([
+  const [{ data: shops }, { data: stock }, { data: sales }, { data: suppliers }, { data: expenses }, { data: products }, { data: productSales }, { data: vehicles }, { data: routes }, { data: clients }, { data: tasks }] = await Promise.all([
     needsShops
       ? supabase.from("bakery_shops").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
       : emptyResult,
@@ -112,6 +134,9 @@ export async function BakeryDashboardContent({
     needsClients
       ? supabase.from("bakery_clients").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
       : emptyResult,
+    needsTasks
+      ? supabase.from("bakery_tasks").select("*").eq("company_id", companyId).order("created_at", { ascending: false }).limit(500)
+      : emptyResult,
   ]);
 
   const shopRows = ((shops ?? []) as BakeryRow[]).filter((shop) => {
@@ -134,6 +159,15 @@ export async function BakeryDashboardContent({
   const vehicleRows = (vehicles ?? []) as BakeryRow[];
   const routeRows = (routes ?? []) as BakeryRow[];
   const dayRoutes = routeRows.filter((route) => route.route_date === selectedDate);
+  const allTaskRows = (tasks ?? []) as BakeryRow[];
+  const taskDepartment = params.department || "";
+  const taskStatus = params.taskStatus || "";
+  const taskRows = allTaskRows.filter((task) => {
+    const text = [task.title, task.department, task.status, task.assignee, task.notes].join(" ").toLowerCase();
+    return (!query || text.includes(query))
+      && (!taskDepartment || task.department === taskDepartment)
+      && (!taskStatus || task.status === taskStatus);
+  });
   const productSaleRows = (productSales ?? []) as BakeryRow[];
   const productRows = ((products ?? []) as BakeryRow[]).filter((product) => {
     const text = [product.name, product.category, product.photo_keywords, product.notes, product.photo_url].join(" ").toLowerCase();
@@ -223,6 +257,8 @@ export async function BakeryDashboardContent({
       {params.saved === "vehicle" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Авто доставки сохранено.</p>}
       {params.saved === "client" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Клиент производства сохранён.</p>}
       {params.saved === "route" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Маршрут доставки сохранён.</p>}
+      {params.saved === "task" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Задача сохранена.</p>}
+      {params.saved === "task-deleted" && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-100">Задача удалена.</p>}
 
       <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Metric title="Товары" value={productRows.length} note={query ? "найдено" : "каталог"} icon={<ShoppingCart className="h-4 w-4" />} />
@@ -308,7 +344,7 @@ export async function BakeryDashboardContent({
         </form>
       </Card>
 
-      <Card id="reports" className={`${sectionClass(section, "overview", "reports", "products", "money", "expenses", "production", "stock", "suppliers", "debts", "delivery", "shops")} mb-5`}>
+      <Card id="reports" className={`${sectionClass(section, "overview", "reports", "products", "money", "expenses", "production", "stock", "suppliers", "debts", "delivery", "tasks", "shops")} mb-5`}>
         <form className="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-end">
           <label>
             <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
@@ -1044,6 +1080,151 @@ export async function BakeryDashboardContent({
         </div>
       </Card>
 
+      <Card id="tasks" className={`${sectionClass(section, "tasks")} mb-5 scroll-mt-6 overflow-hidden`}>
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Задачи производства</p>
+            <h2 className="mt-1 text-xl font-black text-white">База, бухгалтерия, операционный и хозяйственный отдел</h2>
+            <p className="mt-1 text-sm text-slate-400">Разделяйте задачи по отделам, назначайте ответственного, срок и статус выполнения.</p>
+          </div>
+          <span className="rounded-full border border-white/10 bg-slate-950/35 px-3 py-1 text-xs font-black text-slate-200">
+            {taskRows.filter((task) => task.status !== "done").length} открыто
+          </span>
+        </div>
+
+        <div className="mb-5 grid gap-3 md:grid-cols-4">
+          {manufacturingTaskDepartments.map(([key, label]) => {
+            const rows = allTaskRows.filter((task) => task.department === key);
+            const urgent = rows.filter((task) => task.priority === "urgent" && task.status !== "done").length;
+            return (
+              <Link
+                key={key}
+                href={`/dashboard/bakery/tasks?department=${key}`}
+                className="rounded-3xl border border-white/10 bg-slate-950/35 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/30"
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+                  <ClipboardList className="h-4 w-4" />
+                </span>
+                <p className="mt-3 text-lg font-black text-white">{label}</p>
+                <p className="mt-1 text-sm text-slate-400">{rows.length} задач</p>
+                {urgent > 0 && <p className="mt-2 rounded-full bg-red-500 px-3 py-1 text-xs font-black text-white">{urgent} срочно</p>}
+              </Link>
+            );
+          })}
+        </div>
+
+        <form className="mb-5 grid gap-3 rounded-3xl border border-white/10 bg-slate-950/35 p-4 lg:grid-cols-[1fr_220px_220px_auto] lg:items-end">
+          <label>
+            <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+              <Search className="h-3.5 w-3.5" /> Поиск задачи
+            </span>
+            <input name="q" defaultValue={params.q ?? ""} placeholder="Название, ответственный, заметки" className="premium-input h-12 w-full px-4 text-sm text-white outline-none" />
+          </label>
+          <Select label="Отдел" name="department" defaultValue={taskDepartment}>
+            <option value="">Все отделы</option>
+            {manufacturingTaskDepartments.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </Select>
+          <Select label="Статус" name="taskStatus" defaultValue={taskStatus}>
+            <option value="">Все статусы</option>
+            {manufacturingTaskStatuses.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </Select>
+          <button className="premium-button h-12 bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+            <Search className="h-4 w-4" />
+            Найти
+          </button>
+        </form>
+
+        {editable && (
+          <form action={saveBakeryTask} className="mb-5 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
+            <h3 className="text-lg font-black text-white">Добавить задачу</h3>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <Field label="Название задачи" name="title" />
+              <Select label="Отдел" name="department" defaultValue={taskDepartment || "base"}>
+                {manufacturingTaskDepartments.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </Select>
+              <Select label="Приоритет" name="priority" defaultValue="medium">
+                {manufacturingTaskPriorities.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </Select>
+              <Select label="Статус" name="status" defaultValue="new">
+                {manufacturingTaskStatuses.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </Select>
+              <Field label="Ответственный" name="assignee" required={false} />
+              <Field label="Дедлайн" name="dueDate" type="date" required={false} />
+              <div className="md:col-span-2"><Textarea label="Заметки" name="notes" /></div>
+              <div className="md:col-span-4"><SmallButton>Сохранить задачу</SmallButton></div>
+            </div>
+          </form>
+        )}
+
+        <div className="grid gap-5">
+          {!taskRows.length && <EmptyState text="Задач пока нет. Добавьте первую задачу и выберите отдел." />}
+          {manufacturingTaskDepartments.map(([departmentKey, departmentLabel]) => {
+            const rows = taskRows.filter((task) => task.department === departmentKey);
+            if (!rows.length) return null;
+            return (
+              <div key={departmentKey} className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                  <h3 className="font-black text-white">{departmentLabel}</h3>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{rows.length} задач</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="sticky top-0 bg-slate-950/80 text-xs uppercase tracking-[0.14em] text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3">Задача</th>
+                        <th className="px-4 py-3">Ответственный</th>
+                        <th className="px-4 py-3">Дедлайн</th>
+                        <th className="px-4 py-3">Приоритет</th>
+                        <th className="px-4 py-3">Статус</th>
+                        <th className="px-4 py-3">Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((task) => (
+                        <tr key={task.id} className="border-t border-white/10 text-slate-200 hover:bg-white/[0.04]">
+                          <td className="px-4 py-3">
+                            <p className="font-black text-white">{String(task.title ?? "")}</p>
+                            {task.notes && <p className="mt-1 max-w-md text-xs text-slate-500">{String(task.notes)}</p>}
+                          </td>
+                          <td className="px-4 py-3">{String(task.assignee ?? "Не назначен")}</td>
+                          <td className="px-4 py-3">{String(task.due_date ?? "Без даты")}</td>
+                          <td className="px-4 py-3"><TaskBadge value={String(task.priority ?? "medium")} type="priority" /></td>
+                          <td className="px-4 py-3"><TaskBadge value={String(task.status ?? "new")} type="status" /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-2">
+                              {String(task.status ?? "new") !== "done" && (
+                                <form action={updateBakeryTaskStatus}>
+                                  <input type="hidden" name="taskId" value={task.id} />
+                                  <input type="hidden" name="status" value="done" />
+                                  <button className="rounded-full bg-emerald-300 px-3 py-1.5 text-xs font-black text-emerald-950">Готово</button>
+                                </form>
+                              )}
+                              {String(task.status ?? "new") === "new" && (
+                                <form action={updateBakeryTaskStatus}>
+                                  <input type="hidden" name="taskId" value={task.id} />
+                                  <input type="hidden" name="status" value="in_progress" />
+                                  <button className="rounded-full bg-cyan-300/15 px-3 py-1.5 text-xs font-black text-cyan-100">В работу</button>
+                                </form>
+                              )}
+                              {editable && (
+                                <form action={deleteBakeryTask}>
+                                  <input type="hidden" name="taskId" value={task.id} />
+                                  <button className="rounded-full border border-red-300/25 bg-red-500/10 px-3 py-1.5 text-xs font-black text-red-100">Удалить</button>
+                                </form>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
       <Card id="shops" className={`${sectionClass(section, "shops")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -1226,6 +1407,7 @@ const bakerySections: Array<{ key: BakerySection; label: string; href: string; n
   { key: "products", label: "Продажи продуктов", href: "/dashboard/bakery/products", note: "товары, фото, остатки" },
   { key: "money", label: "Денежный отчёт", href: "/dashboard/bakery/money", note: "касса и прибыль" },
   { key: "expenses", label: "Расходы", href: "/dashboard/bakery/expenses", note: "зп, мука, сахар" },
+  { key: "tasks", label: "Задачи", href: "/dashboard/bakery/tasks", note: "отделы и сроки" },
   { key: "production", label: "Производство", href: "/dashboard/bakery/production", note: "выпуск за день" },
   { key: "stock", label: "Склад", href: "/dashboard/bakery/stock", note: "остатки" },
   { key: "suppliers", label: "Поставщики", href: "/dashboard/bakery/suppliers", note: "поставки и долги" },
@@ -1283,6 +1465,37 @@ function AssistantInsight({ title, detail, tone }: { title: string; detail: stri
         </div>
       </div>
     </div>
+  );
+}
+
+function TaskBadge({ value, type }: { value: string; type: "status" | "priority" }) {
+  const statusLabels: Record<string, string> = {
+    new: "Новая",
+    in_progress: "В работе",
+    done: "Готово",
+  };
+  const priorityLabels: Record<string, string> = {
+    low: "Низкий",
+    medium: "Средний",
+    high: "Высокий",
+    urgent: "Срочно",
+  };
+  const isDone = value === "done";
+  const isUrgent = value === "urgent";
+  const isHigh = value === "high";
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-black ${
+      isDone
+        ? "bg-emerald-300 text-emerald-950"
+        : isUrgent
+          ? "bg-red-500 text-white"
+          : isHigh
+            ? "bg-amber-300 text-amber-950"
+            : "bg-white/10 text-slate-200"
+    }`}>
+      {type === "status" ? statusLabels[value] ?? value : priorityLabels[value] ?? value}
+    </span>
   );
 }
 

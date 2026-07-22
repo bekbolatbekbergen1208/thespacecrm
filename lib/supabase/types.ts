@@ -301,6 +301,7 @@ export type Database = {
       bakery_vehicles: RoboticsTable;
       bakery_clients: RoboticsTable;
       bakery_delivery_routes: RoboticsTable;
+      bakery_tasks: RoboticsTable;
       retail_products: RoboticsTable;
       retail_product_sales: RoboticsTable;
       retail_debts: RoboticsTable;
