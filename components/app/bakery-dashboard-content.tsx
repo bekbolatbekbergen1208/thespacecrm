@@ -3,6 +3,7 @@ import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
 import { BakerySaleForm } from "@/components/app/bakery-sale-form";
 import { CameraPhotoField } from "@/components/app/camera-photo-field";
 import { Field, Select, SmallButton, Textarea } from "@/components/app/forms";
+import { VoiceTaskAssistant } from "@/components/app/voice-task-assistant";
 import { canManage, requireUser } from "@/lib/auth";
 import { normalizeIndustry } from "@/lib/industries";
 import { AlertTriangle, Bot, CalendarDays, Car, CheckCircle2, CircleDollarSign, ClipboardList, Download, Image as ImageIcon, Lightbulb, MapPinned, MessageCircle, PackagePlus, Route, RotateCcw, Search, ShoppingCart, Trash2, Truck, UsersRound } from "lucide-react";
@@ -1138,8 +1139,9 @@ export async function BakeryDashboardContent({
         </form>
 
         {editable && (
-          <form action={saveBakeryTask} className="mb-5 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
+          <form action={saveBakeryTask} data-voice-task-form="true" className="mb-5 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4">
             <h3 className="text-lg font-black text-white">Добавить задачу</h3>
+            <VoiceTaskAssistant />
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               <Field label="Название задачи" name="title" />
               <Select label="Отдел" name="department" defaultValue={taskDepartment || "base"}>
