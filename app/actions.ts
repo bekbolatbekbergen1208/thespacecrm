@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { canManage, requireUser } from "@/lib/auth";
+import { routesForEmployeePosition } from "@/lib/employee-positions";
 import { EDUCATION_EMPLOYEE_ROUTES } from "@/lib/employee-permissions";
 import { BUSINESS_INDUSTRIES, dashboardRouteForIndustry } from "@/lib/industries";
 import { getRoboticsModule, roboticsModuleList, type RoboticsModuleKey } from "@/lib/robotics-crm";
@@ -488,7 +489,14 @@ export async function approveEmployeeAccess(formData: FormData) {
 
   const { error: memberError } = await supabase
     .from("company_members")
-    .insert({ company_id: companyId, user_id: request.user_id, role: "employee", position: request.position, dashboard_route: dashboardRoute });
+    .insert({
+      company_id: companyId,
+      user_id: request.user_id,
+      role: "employee",
+      position: request.position,
+      dashboard_route: dashboardRoute,
+      allowed_routes: routesForEmployeePosition(request.position, company?.business_type ?? null),
+    });
 
   if (memberError && !memberError.message.includes("duplicate")) {
     redirect(`/dashboard/employees?error=${encodeURIComponent(memberError.message)}`);
@@ -1203,10 +1211,13 @@ export async function deleteCustomer(formData: FormData) {
 }
 
 export async function saveEmployee(formData: FormData) {
-  const { supabase, companyId, role } = await companyContext();
+  const { supabase, companyId, role, context } = await companyContext();
   if (!canManage(role)) redirect(`/dashboard/employees?error=${encodeURIComponent("Only founders, admins, and managers can save employees")}`);
 
   const id = value(formData, "id");
+  const { data: existingEmployee } = id
+    ? await supabase.from("employees").select("user_id").eq("id", id).eq("company_id", companyId).maybeSingle()
+    : { data: null };
   if (!id) {
     const { count } = await supabase
       .from("employees")
@@ -1228,6 +1239,19 @@ export async function saveEmployee(formData: FormData) {
     : await supabase.from("employees").insert({ ...payload, company_id: companyId });
 
   if (result.error) redirect(`/dashboard/employees?error=${encodeURIComponent(result.error.message)}`);
+  if (existingEmployee?.user_id) {
+    const company = Array.isArray(context.membership?.companies) ? context.membership.companies[0] : context.membership?.companies;
+    const presetRoutes = routesForEmployeePosition(payload.position, company?.business_type ?? null);
+    const memberUpdate: { position: string; allowed_routes?: string[] } = { position: payload.position };
+    if (presetRoutes.length) memberUpdate.allowed_routes = presetRoutes;
+
+    await supabase
+      .from("company_members")
+      .update(memberUpdate)
+      .eq("company_id", companyId)
+      .eq("user_id", existingEmployee.user_id)
+      .eq("role", "employee");
+  }
   revalidatePath("/dashboard/employees");
   redirect("/dashboard/employees?saved=employee");
 }

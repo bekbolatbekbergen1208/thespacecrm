@@ -1,7 +1,8 @@
 import { approveEmployeeAccess, deleteEmployee, saveEmployee, updateEmployeePermissions } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
-import { Field, SmallButton } from "@/components/app/forms";
+import { Field, Select, SmallButton } from "@/components/app/forms";
 import { canManage, requireUser } from "@/lib/auth";
+import { EMPLOYEE_POSITION_OPTIONS } from "@/lib/employee-positions";
 import { EDUCATION_EMPLOYEE_ROUTES } from "@/lib/employee-permissions";
 import { routePermissionsFromNav } from "@/lib/employee-permissions";
 import { getIndustryDashboardConfig } from "@/lib/industry-dashboard";
@@ -80,7 +81,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             <Field label={tt("Name")} name="name" />
             <Field label={tt("Email")} name="email" type="email" required={false} />
             <Field label={tt("Phone")} name="phone" required={false} />
-            <Field label={tt("Position")} name="position" defaultValue={tt("Employee")} />
+            <Select label={tt("Position")} name="position" defaultValue="Сотрудник">
+              {EMPLOYEE_POSITION_OPTIONS.map((position) => <option key={position} value={position}>{position}</option>)}
+            </Select>
             <Field label={tt("Salary")} name="salary" type="number" defaultValue={0} />
             <div className="md:col-span-5"><SmallButton>{tt("Add employee")}</SmallButton></div>
           </form>
@@ -100,7 +103,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                   <Field label={tt("Name")} name="name" defaultValue={employee.name} />
                   <Field label={tt("Email")} name="email" type="email" defaultValue={employee.email ?? ""} required={false} />
                   <Field label={tt("Phone")} name="phone" defaultValue={employee.phone ?? ""} required={false} />
-                  <Field label={tt("Position")} name="position" defaultValue={employee.position} />
+                  <Select label={tt("Position")} name="position" defaultValue={employee.position}>
+                    {EMPLOYEE_POSITION_OPTIONS.map((position) => <option key={position} value={position}>{position}</option>)}
+                  </Select>
                   <Field label={tt("Salary")} name="salary" type="number" defaultValue={employee.salary} />
                   <div className="flex items-end gap-2"><SmallButton>{tt("Save")}</SmallButton></div>
                 </form>
