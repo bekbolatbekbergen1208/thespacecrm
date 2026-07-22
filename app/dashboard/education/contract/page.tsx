@@ -2,14 +2,20 @@ import { Card, PageHeader } from "@/components/app/app-shell";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { ContractPdfPrintButton } from "@/components/app/contract-pdf-print-button";
 import { requireUser } from "@/lib/auth";
+import { Bot, Lightbulb } from "lucide-react";
 
 type Row = {
   id: string;
   [key: string]: string | number | null;
 };
 
-export default async function EducationContractPage() {
+export default async function EducationContractPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ contractPrompt?: string }>;
+}) {
   const { supabase, membership } = await requireUser();
+  const params = await searchParams;
   const companyId = membership!.company_id;
   const [{ data: company }, { data: students }] = await Promise.all([
     supabase.from("companies").select("name, business_type").eq("id", companyId).maybeSingle(),
@@ -18,6 +24,8 @@ export default async function EducationContractPage() {
   const studentRows = (students ?? []) as Row[];
   const companyName = String(company?.name ?? "CRM.Space Education Center");
   const today = new Date().toISOString().slice(0, 10);
+  const contractPrompt = (params.contractPrompt ?? "").trim();
+  const contractAssistant = contractPrompt ? buildContractAssistant(contractPrompt, companyName) : null;
 
   return (
     <>
@@ -35,6 +43,51 @@ export default async function EducationContractPage() {
         </Card>
         <ContractPdfPrintButton label="PDF и печать договора" />
       </div>
+
+      <Card className="no-print mb-5 overflow-hidden border-cyan-300/20 bg-cyan-300/[0.06]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
+              <Bot className="h-3.5 w-3.5" />
+              AI помощник договора
+            </p>
+            <h2 className="mt-3 text-xl font-black text-white">Опишите коротко, какой договор нужен</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              Например: “абонемент 35000 тг, 2 раза в неделю, возврат 5 дней, перенос только в эту неделю”. CRM подготовит пункты, которые можно вставить в договор.
+            </p>
+          </div>
+          <span className="w-fit rounded-full bg-emerald-300 px-3 py-1 text-xs font-black text-emerald-950">работает сразу</span>
+        </div>
+        <form action="/dashboard/education/contract" className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+          <label>
+            <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-cyan-100">Краткое описание</span>
+            <textarea
+              name="contractPrompt"
+              defaultValue={contractPrompt}
+              placeholder="Напишите коротко условия договора, оплату, срок, переносы, возврат, правила занятий..."
+              className="premium-input min-h-24 w-full px-4 py-3 text-sm text-white outline-none"
+            />
+          </label>
+          <button className="premium-button h-12 bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+            <Lightbulb className="h-4 w-4" />
+            Сделать пункты
+          </button>
+        </form>
+        {contractAssistant && (
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Что добавить</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
+                {contractAssistant.checklist.map((item) => <li key={item}>- {item}</li>)}
+              </ul>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Готовая формулировка</p>
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-100">{contractAssistant.clause}</p>
+            </div>
+          </div>
+        )}
+      </Card>
 
       <section data-contract-paper className="print-area contract-paper mx-auto max-w-5xl rounded-[2rem] border border-white/10 bg-white p-6 text-slate-950 shadow-2xl shadow-black/30 md:p-10">
         <div className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-start md:justify-between">
@@ -274,4 +327,39 @@ function SignatureBlock({ title }: { title: string }) {
 
 function fullName(row: Row) {
   return [row.first_name, row.last_name].filter(Boolean).join(" ") || String(row.student_name ?? row.name ?? "");
+}
+
+function buildContractAssistant(prompt: string, companyName: string) {
+  const lower = prompt.toLowerCase();
+  const mentionsPayment = /оплат|сумм|цена|стоим|тг|₸|kaspi|нал/i.test(prompt);
+  const mentionsRefund = /возврат|вернуть|5/i.test(prompt);
+  const mentionsSchedule = /распис|занят|урок|недел|перенос|пропуск/i.test(prompt);
+  const mentionsTerm = /30|срок|абонемент|месяц/i.test(prompt);
+  const mentionsSafety = /правил|безопас|оборуд|ответствен/i.test(prompt);
+
+  const checklist = [
+    mentionsPayment ? "Указать сумму, дату и способ оплаты." : "Добавить пункт оплаты: сумма, дата оплаты, способ оплаты.",
+    mentionsTerm ? "Закрепить срок абонемента: 30 календарных дней с даты оплаты." : "Указать срок действия договора/абонемента.",
+    mentionsSchedule ? "Описать расписание, пропуски, переносы и свободные места." : "Добавить правила посещения и переноса занятий.",
+    mentionsRefund ? "Добавить возврат только в течение 5 календарных дней после оплаты." : "Добавить отдельный пункт возврата.",
+    mentionsSafety ? "Добавить ответственность за правила центра и оборудование." : "Проверить персональные данные, подписи сторон и ответственность.",
+  ];
+
+  const clause = [
+    `На основании описания: “${prompt}”`,
+    "",
+    `Рекомендуемая формулировка для договора ${companyName}:`,
+    "",
+    "Стороны согласовали, что образовательные услуги оказываются по расписанию, указанному в договоре или приложении к нему. Заказчик обязуется своевременно оплачивать услуги и заранее уведомлять Исполнителя о невозможности посещения занятия.",
+    mentionsPayment
+      ? "Сумма, дата и способ оплаты указываются в разделе оплаты договора, счёте, квитанции или ином документе, подтверждающем платёж."
+      : "Стоимость услуг, дата оплаты и способ оплаты должны быть отдельно указаны в разделе “Стоимость услуг и порядок оплаты”.",
+    "Абонемент действует строго 30 календарных дней с даты покупки/оплаты. Перенос пропущенного занятия возможен только в пределах той же календарной недели при предварительном уведомлении и наличии свободных мест.",
+    "Возврат денежных средств возможен только в течение 5 календарных дней после покупки/оплаты на основании письменного заявления Заказчика с учётом фактически оказанных услуг и применимого законодательства.",
+    lower.includes("whatsapp") || lower.includes("ватсап")
+      ? "Уведомления сторон могут направляться через WhatsApp, телефон, CRM.Space или иной согласованный канал связи."
+      : "Уведомления сторон могут направляться через телефон, электронную почту, CRM.Space или иной согласованный канал связи.",
+  ].join("\n");
+
+  return { checklist, clause };
 }
