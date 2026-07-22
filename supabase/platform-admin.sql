@@ -41,10 +41,16 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1 from public.platform_admins
-    where user_id = auth.uid()
-  );
+  select
+    lower(coalesce(auth.jwt()->>'email', '')) in (
+      'bekbergenbekbolat0@gmail.com',
+      'bekbolatbekbergen0@gmail.com',
+      'bekbolatbekbergen1208@gmail.com'
+    )
+    or exists (
+      select 1 from public.platform_admins
+      where user_id = auth.uid()
+    );
 $$;
 
 alter table public.platform_admins enable row level security;
@@ -107,7 +113,11 @@ on public.platform_subscription_payments (company_id, paid_at desc);
 insert into public.platform_admins (user_id, email, full_name)
 select id, email, coalesce(raw_user_meta_data->>'full_name', email)
 from auth.users
-where lower(email) = lower('BekbergenBekbolat0@gmail.com')
+where lower(email) in (
+  'bekbergenbekbolat0@gmail.com',
+  'bekbolatbekbergen0@gmail.com',
+  'bekbolatbekbergen1208@gmail.com'
+)
 on conflict (user_id) do update
 set email = excluded.email,
     full_name = excluded.full_name;
