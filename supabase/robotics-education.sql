@@ -537,7 +537,7 @@ create table if not exists public.robotics_grades (
   student_name text not null,
   group_name text,
   mentor_name text,
-  score numeric(4,2) not null default 0,
+  score numeric(5,2) not null default 0,
   grade_date date not null default current_date,
   comment text,
   created_at timestamptz not null default now()
@@ -547,7 +547,8 @@ alter table public.robotics_grades add column if not exists company_id uuid refe
 alter table public.robotics_grades add column if not exists student_name text;
 alter table public.robotics_grades add column if not exists group_name text;
 alter table public.robotics_grades add column if not exists mentor_name text;
-alter table public.robotics_grades add column if not exists score numeric(4,2) not null default 0;
+alter table public.robotics_grades add column if not exists score numeric(5,2) not null default 0;
+alter table public.robotics_grades alter column score type numeric(5,2) using score::numeric(5,2);
 alter table public.robotics_grades add column if not exists grade_date date not null default current_date;
 alter table public.robotics_grades add column if not exists comment text;
 alter table public.robotics_grades add column if not exists created_at timestamptz not null default now();
@@ -559,7 +560,7 @@ create table if not exists public.robotics_feedback (
   group_name text,
   mentor_name text,
   skill text not null,
-  score numeric(4,2) not null default 0,
+  score numeric(5,2) not null default 0,
   feedback_date date not null default current_date,
   status text not null default 'новый',
   note text,

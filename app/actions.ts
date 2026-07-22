@@ -27,6 +27,14 @@ function roboticsValue(formData: FormData, key: string, type?: string) {
   return raw || null;
 }
 
+function isNumericOverflowError(message?: string) {
+  return Boolean(message?.toLowerCase().includes("numeric field overflow"));
+}
+
+function legacySafeScore(score: number) {
+  return Math.min(99.99, Math.max(0, score));
+}
+
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -1471,9 +1479,16 @@ export async function saveStudentGrade(formData: FormData) {
     comment,
   };
 
-  const result = existing.data?.id
+  let result = existing.data?.id
     ? await supabase.from("robotics_grades").update(payload).eq("id", existing.data.id).eq("company_id", companyId)
     : await supabase.from("robotics_grades").insert(payload);
+
+  if (isNumericOverflowError(result.error?.message)) {
+    const safePayload = { ...payload, score: legacySafeScore(score) };
+    result = existing.data?.id
+      ? await supabase.from("robotics_grades").update(safePayload).eq("id", existing.data.id).eq("company_id", companyId)
+      : await supabase.from("robotics_grades").insert(safePayload);
+  }
 
   if (result.error) redirect(`/dashboard/education/reports?error=${encodeURIComponent(result.error.message)}`);
   revalidatePath("/dashboard/education/reports");
@@ -1847,9 +1862,16 @@ export async function saveMentorLessonSession(formData: FormData) {
         comment: gradeComment,
       };
 
-      const gradeResult = existingGrade.data?.id
+      let gradeResult = existingGrade.data?.id
         ? await supabase.from("robotics_grades").update(gradePayload).eq("id", existingGrade.data.id).eq("company_id", companyId)
         : await supabase.from("robotics_grades").insert(gradePayload);
+
+      if (isNumericOverflowError(gradeResult.error?.message)) {
+        const safeGradePayload = { ...gradePayload, score: legacySafeScore(score) };
+        gradeResult = existingGrade.data?.id
+          ? await supabase.from("robotics_grades").update(safeGradePayload).eq("id", existingGrade.data.id).eq("company_id", companyId)
+          : await supabase.from("robotics_grades").insert(safeGradePayload);
+      }
 
       if (gradeResult.error) {
         redirect(`/dashboard/mentor?group=${groupId}&error=${encodeURIComponent(gradeResult.error.message)}`);
