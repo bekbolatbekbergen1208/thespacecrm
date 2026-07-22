@@ -98,6 +98,7 @@ const industryConfigs: Record<BusinessIndustry, IndustryDashboardConfig> = {
       ["Денежный отчёт", "/dashboard/bakery/money"],
       ["Расходы", "/dashboard/bakery/expenses"],
       ["Задачи", "/dashboard/bakery/tasks"],
+      ["Договор", "/dashboard/bakery/contract"],
       ["Производство", "/dashboard/bakery/production"],
       ["Склад", "/dashboard/bakery/stock"],
       ["Поставщики", "/dashboard/bakery/suppliers"],

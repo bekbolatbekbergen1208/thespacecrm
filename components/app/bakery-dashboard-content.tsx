@@ -29,6 +29,7 @@ export type BakerySection =
   | "delivery"
   | "clients"
   | "tasks"
+  | "contract"
   | "shops";
 
 const prices = {
@@ -67,7 +68,7 @@ const manufacturingTaskPriorities = [
 ] as const;
 
 export default async function BakeryDashboardPage(props: {
-  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string; department?: string; taskStatus?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string; department?: string; taskStatus?: string; contractPrompt?: string }>;
 }) {
   return <BakeryDashboardContent {...props} section="overview" />;
 }
@@ -76,7 +77,7 @@ export async function BakeryDashboardContent({
   searchParams,
   section = "overview",
 }: {
-  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string; department?: string; taskStatus?: string }>;
+  searchParams: Promise<{ error?: string; q?: string; date?: string; saved?: string; aiq?: string; department?: string; taskStatus?: string; contractPrompt?: string }>;
   section?: BakerySection;
 }) {
   const [{ supabase, membership }, params] = await Promise.all([requireUser(), searchParams]);
@@ -88,6 +89,8 @@ export async function BakeryDashboardContent({
   const selectedDate = params.date || today;
   const query = (params.q ?? "").toLowerCase();
   const aiQuestion = (params.aiq ?? "").trim();
+  const contractPrompt = (params.contractPrompt ?? "").trim();
+  const manufacturingContract = contractPrompt ? buildManufacturingContractAssistant(contractPrompt, String(company?.name ?? "CRM.Space Manufacturing")) : null;
 
   const needsAssistant = section === "overview" || section === "assistant";
   const needsReports = section === "overview" || section === "reports" || section === "money";
@@ -344,7 +347,7 @@ export async function BakeryDashboardContent({
         </form>
       </Card>
 
-      <Card id="reports" className={`${sectionClass(section, "overview", "reports", "products", "money", "expenses", "production", "stock", "suppliers", "debts", "delivery", "tasks", "shops")} mb-5`}>
+      <Card id="reports" className={`${sectionClass(section, "overview", "reports", "products", "money", "expenses", "production", "stock", "suppliers", "debts", "delivery", "tasks", "contract", "shops")} mb-5`}>
         <form className="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-end">
           <label>
             <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
@@ -1225,6 +1228,51 @@ export async function BakeryDashboardContent({
         </div>
       </Card>
 
+      <Card id="contract" className={`${sectionClass(section, "contract")} mb-5 scroll-mt-6 overflow-hidden border-cyan-300/20 bg-cyan-300/[0.06]`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
+              <Bot className="h-3.5 w-3.5" />
+              AI помощник договора
+            </p>
+            <h2 className="mt-3 text-2xl font-black text-white">Договор для производственного бизнеса</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              Напишите коротко условия: клиент, продукция, количество, сроки, оплата, доставка, возврат, штрафы. CRM подготовит понятные пункты договора.
+            </p>
+          </div>
+          <span className="w-fit rounded-full bg-emerald-300 px-3 py-1 text-xs font-black text-emerald-950">для Manufacturing</span>
+        </div>
+        <form action="/dashboard/bakery/contract#contract" className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+          <label>
+            <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-cyan-100">Краткое описание договора</span>
+            <textarea
+              name="contractPrompt"
+              defaultValue={contractPrompt}
+              placeholder="Например: поставка воды клиенту, 100 бутылей в неделю, оплата Kaspi/нал, доставка каждый понедельник, возврат брака 3 дня..."
+              className="premium-input min-h-24 w-full px-4 py-3 text-sm text-white outline-none"
+            />
+          </label>
+          <button className="premium-button h-12 bg-white px-5 text-sm text-slate-950 shadow-glow hover:bg-cyan-50">
+            <Lightbulb className="h-4 w-4" />
+            Сделать договор
+          </button>
+        </form>
+        {manufacturingContract && (
+          <div className="mt-5 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Что обязательно указать</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
+                {manufacturingContract.checklist.map((item) => <li key={item}>- {item}</li>)}
+              </ul>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Готовый текст</p>
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-100">{manufacturingContract.clause}</p>
+            </div>
+          </div>
+        )}
+      </Card>
+
       <Card id="shops" className={`${sectionClass(section, "shops")} mb-5 scroll-mt-6 overflow-hidden`}>
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -1408,6 +1456,7 @@ const bakerySections: Array<{ key: BakerySection; label: string; href: string; n
   { key: "money", label: "Денежный отчёт", href: "/dashboard/bakery/money", note: "касса и прибыль" },
   { key: "expenses", label: "Расходы", href: "/dashboard/bakery/expenses", note: "зп, мука, сахар" },
   { key: "tasks", label: "Задачи", href: "/dashboard/bakery/tasks", note: "отделы и сроки" },
+  { key: "contract", label: "Договор", href: "/dashboard/bakery/contract", note: "AI пункты договора" },
   { key: "production", label: "Производство", href: "/dashboard/bakery/production", note: "выпуск за день" },
   { key: "stock", label: "Склад", href: "/dashboard/bakery/stock", note: "остатки" },
   { key: "suppliers", label: "Поставщики", href: "/dashboard/bakery/suppliers", note: "поставки и долги" },
@@ -1497,6 +1546,47 @@ function TaskBadge({ value, type }: { value: string; type: "status" | "priority"
       {type === "status" ? statusLabels[value] ?? value : priorityLabels[value] ?? value}
     </span>
   );
+}
+
+function buildManufacturingContractAssistant(prompt: string, companyName: string) {
+  const hasDelivery = /достав|маршрут|водител|адрес|точк/i.test(prompt);
+  const hasPayment = /оплат|kaspi|нал|перевод|сумм|цена|предоплат|долг/i.test(prompt);
+  const hasProduct = /продукт|товар|поставка|бутыл|вода|издел|колич|шт|кг|литр/i.test(prompt);
+  const hasReturn = /возврат|брак|некачеств|замен/i.test(prompt);
+  const hasDeadline = /срок|дата|кажд|недел|месяц|день/i.test(prompt);
+
+  const checklist = [
+    hasProduct ? "Предмет договора: название продукции, количество, единица измерения, качество." : "Добавить предмет договора: какую продукцию производим или поставляем.",
+    hasPayment ? "Оплата: сумма, способ оплаты, срок оплаты, долг/предоплата." : "Добавить порядок оплаты: цена, дата оплаты, Kaspi/нал/перевод.",
+    hasDelivery ? "Доставка: адрес клиента, маршрут, ответственный водитель, дата и время." : "Если есть доставка, указать адрес, срок и ответственного.",
+    hasReturn ? "Возврат/брак: срок проверки, порядок замены или возврата." : "Добавить пункт по браку, возврату и претензиям по качеству.",
+    hasDeadline ? "Сроки: дата начала, периодичность поставки, дедлайн исполнения." : "Указать сроки исполнения и периодичность поставок.",
+    "Подписи сторон: реквизиты, телефоны, ФИО ответственных лиц.",
+  ];
+
+  const clause = [
+    `На основании описания: “${prompt}”`,
+    "",
+    `Рекомендуемая структура договора для ${companyName}:`,
+    "",
+    "1. Предмет договора. Исполнитель обязуется произвести и/или поставить Заказчику продукцию в согласованном количестве, ассортименте и качестве, а Заказчик обязуется принять продукцию и оплатить её на условиях договора.",
+    hasProduct
+      ? "2. Продукция и количество. Наименование продукции, количество, единица измерения, характеристики и требования к качеству указываются в заявке, спецификации, накладной или приложении к договору."
+      : "2. Продукция и количество. Стороны обязаны отдельно указать наименование продукции, количество, единицу измерения и требования к качеству.",
+    hasPayment
+      ? "3. Оплата. Стоимость, способ оплаты, дата оплаты, предоплата или отсрочка платежа фиксируются в договоре, счёте, накладной или электронном подтверждении. При просрочке оплаты Исполнитель вправе приостановить новые поставки до погашения задолженности."
+      : "3. Оплата. В договоре необходимо указать цену, дату оплаты, способ оплаты и порядок действий при задолженности.",
+    hasDelivery
+      ? "4. Доставка. Доставка осуществляется по адресу Заказчика или по маршруту, согласованному сторонами. Риск случайной порчи продукции переходит после передачи продукции Заказчику или его представителю."
+      : "4. Передача продукции. Порядок самовывоза или доставки, адрес, дата и ответственное лицо должны быть согласованы сторонами.",
+    hasReturn
+      ? "5. Возврат и брак. Заказчик обязан проверить продукцию при получении. Претензии по количеству и явным дефектам принимаются в согласованный сторонами срок. Подтверждённый брак подлежит замене, перерасчёту или возврату согласно договорённости сторон."
+      : "5. Качество и претензии. Заказчик проверяет продукцию при получении. Претензии по явным дефектам и количеству принимаются в срок, согласованный сторонами.",
+    "6. Ответственность сторон. Стороны несут ответственность за нарушение сроков, неоплату, неприёмку продукции и предоставление недостоверных данных в соответствии с договором и применимым законодательством.",
+    "7. Коммуникации. Заявки, подтверждения, уведомления и согласования могут направляться через телефон, WhatsApp, электронную почту, CRM.Space или иной согласованный канал связи.",
+  ].join("\n");
+
+  return { checklist, clause };
 }
 
 function MoneyBox({ label, value, note, danger = false }: { label: string; value: number; note: string; danger?: boolean }) {
