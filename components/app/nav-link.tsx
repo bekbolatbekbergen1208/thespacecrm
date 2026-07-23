@@ -32,6 +32,7 @@ const iconByLabel: Record<string, LucideIcon> = {
   Группы: Users,
   Менторы: BriefcaseBusiness,
   Договор: FileText,
+  Договоры: FileText,
   Семьи: Users,
   Фидбек: Bell,
   Обучение: GraduationCap,

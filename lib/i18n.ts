@@ -304,6 +304,7 @@ const literalTranslations: Partial<Record<string, Partial<Record<Locale, string>
   Посещаемость: { kk: "Қатысу", ru: "Посещаемость", en: "Attendance" },
   Расписание: { kk: "Кесте", ru: "Расписание", en: "Schedule" },
   "Пробные уроки": { kk: "Сынақ сабақтар", ru: "Пробные уроки", en: "Trial lessons" },
+  Договоры: { kk: "Келісімшарттар", ru: "Договоры", en: "Contracts" },
   Абонементы: { kk: "Абонементтер", ru: "Абонементы", en: "Subscriptions" },
   Группы: { kk: "Топтар", ru: "Группы", en: "Groups" },
   Менторы: { kk: "Менторлар", ru: "Менторы", en: "Mentors" },

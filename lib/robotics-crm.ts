@@ -62,6 +62,7 @@ export const roboticsPrimaryNav = [
   ["Посещаемость", "/dashboard/education/attendance"],
   ["Пробные уроки", "/dashboard/education/trial-lessons"],
   ["Оплаты", "/dashboard/education/payments"],
+  ["Договоры", "/dashboard/education/contract"],
   ["Мои группы", "/dashboard/mentor"],
   ["Журнал ментора", "/dashboard/education/mentor-journal"],
   ["Управление сотрудниками", "/dashboard/employees"],
@@ -71,7 +72,6 @@ export const roboticsPrimaryNav = [
 export const roboticsSecondaryNav = [
   ["Абонементы", "/dashboard/education/subscriptions"],
   ["Менторы", "/dashboard/education/mentors"],
-  ["Договор", "/dashboard/education/contract"],
   ["Семьи", "/dashboard/education/families"],
   ["Фидбек", "/dashboard/education/feedback"],
   ["Обучение", "/dashboard/education/learning"],
