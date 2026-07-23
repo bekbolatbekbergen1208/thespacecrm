@@ -56,15 +56,15 @@ export function AppShell({
   const homeRoute = role === "employee" ? employeeHomeRoute : dashboardRoute;
   const visibleNav = role === "employee" ? nav.filter(([, href]) => routeIsAllowed(href, employeeRoutes)) : nav;
   const navItems = [
-    { href: homeRoute, label: t.dashboard, iconKey: "Dashboard" },
+    { href: homeRoute, label: personalizeNavLabel(t.dashboard, locale), iconKey: "Dashboard" },
     ...(isMentor && !visibleNav.some(([, href]) => href === "/dashboard/mentor")
-      ? [{ href: "/dashboard/mentor", label: translateLiteral(locale, "Мои группы"), iconKey: "Группы" }]
+      ? [{ href: "/dashboard/mentor", label: personalizeNavLabel(translateLiteral(locale, "Мои группы"), locale), iconKey: "Группы" }]
       : []),
     ...(pendingAccessCount
-      ? [{ href: "/dashboard/employees", label: translateLiteral(locale, "Заявки"), iconKey: "Employees", badge: pendingAccessCount }]
+      ? [{ href: "/dashboard/employees", label: personalizeNavLabel(translateLiteral(locale, "Заявки"), locale), iconKey: "Employees", badge: pendingAccessCount }]
       : []),
-    ...visibleNav.map(([label, href]) => ({ href, label: translateLiteral(locale, label), iconKey: label })),
-    { href: "/dashboard/profile", label: t.profile, iconKey: "Profile" },
+    ...visibleNav.map(([label, href]) => ({ href, label: personalizeNavLabel(translateLiteral(locale, label), locale), iconKey: label })),
+    { href: "/dashboard/profile", label: personalizeNavLabel(t.profile, locale), iconKey: "Profile" },
   ];
 
   return (
@@ -212,6 +212,93 @@ export function AppShell({
       </div>
     </main>
   );
+}
+
+function personalizeNavLabel(label: string, locale: Locale) {
+  const normalized = label.trim();
+
+  if (/^(мой|моя|моё|мои|my|менің)\s/i.test(normalized)) {
+    return normalized;
+  }
+
+  if (locale === "en") {
+    return `My ${normalized}`;
+  }
+
+  if (locale === "kk") {
+    return `Менің ${normalized}`;
+  }
+
+  const ruLabels: Record<string, string> = {
+    Dashboard: "Мой Dashboard",
+    Профиль: "Мой профиль",
+    Заявки: "Мои заявки",
+    Пекарня: "Моя пекарня",
+    "Производственный бизнес": "Мой производственный бизнес",
+    "Товары и продажи": "Мои товары и продажи",
+    "Поиск и день": "Мой поиск и день",
+    "Продажи продуктов": "Мои продажи продуктов",
+    "Денежный отчёт": "Мой денежный отчёт",
+    Расходы: "Мои расходы",
+    Задачи: "Мои задачи",
+    Договор: "Мой договор",
+    Производство: "Моё производство",
+    Склад: "Мой склад",
+    Поставщики: "Мои поставщики",
+    Доставка: "Моя доставка",
+    Клиенты: "Мои клиенты",
+    Магазины: "Мои магазины",
+    Долги: "Мои долги",
+    "Точки продаж": "Мои точки продаж",
+    Настройки: "Мои настройки",
+    Календарь: "Мой календарь",
+    Отчёты: "Мои отчёты",
+    "AI ассистент": "Мой AI ассистент",
+    Мусор: "Мой мусор",
+    Ученики: "Мои ученики",
+    Группы: "Мои группы",
+    Расписание: "Моё расписание",
+    Посещаемость: "Моя посещаемость",
+    "Пробные уроки": "Мои пробные уроки",
+    Оплаты: "Мои оплаты",
+    "Журнал ментора": "Мой журнал ментора",
+    Абонементы: "Мои абонементы",
+    Менторы: "Мои менторы",
+    Семьи: "Мои семьи",
+    Фидбек: "Мой фидбек",
+    Обучение: "Моё обучение",
+    Инвентарь: "Мой инвентарь",
+    Методика: "Моя методика",
+    Зарплаты: "Мои зарплаты",
+    Команда: "Моя команда",
+    Patients: "Мои пациенты",
+    Appointments: "Мои приёмы",
+    "Medical Records": "Мои медкарты",
+    Payments: "Мои оплаты",
+    Reports: "Мои отчёты",
+    Orders: "Мои заказы",
+    Tables: "Мои столы",
+    Menu: "Моё меню",
+    Kitchen: "Моя кухня",
+    Inventory: "Мой инвентарь",
+    Deliveries: "Мои доставки",
+    Vehicles: "Мой транспорт",
+    Routes: "Мои маршруты",
+    Tracking: "Мой трекинг",
+    Clients: "Мои клиенты",
+    Projects: "Мои проекты",
+    Tasks: "Мои задачи",
+    Properties: "Мои объекты",
+    Deals: "Мои сделки",
+    Analytics: "Моя аналитика",
+    Settings: "Мои настройки",
+    Customers: "Мои клиенты",
+    Materials: "Мои материалы",
+    Equipment: "Моё оборудование",
+    Budget: "Мой бюджет",
+  };
+
+  return ruLabels[normalized] ?? `Мой ${normalized}`;
 }
 
 export function PageHeader({
