@@ -22,7 +22,7 @@ export default async function MentorWorkspacePage({
   const today = new Date().toISOString().slice(0, 10);
   const periodFrom = isDateInput(params.from) ? String(params.from) : monthStart(today);
   const periodTo = isDateInput(params.to) ? String(params.to) : today;
-  const printDays = dateRangeDays(periodFrom, periodTo, 31);
+  const printDays = dateRangeDays(periodFrom, periodTo, 366);
 
   const [{ data: profile }, { data: employee }, { data: groups }, { data: students }, { data: lessons }, { data: attendance }, { data: grades }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
@@ -177,7 +177,7 @@ export default async function MentorWorkspacePage({
                 <div className="mt-3 grid gap-2 text-xs font-bold text-slate-300 sm:grid-cols-4">
                   <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Ученики: {groupRows.length}</span>
                   <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Дней: {printDays.length}</span>
-                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Пустые строки: {printableRows.length - groupRows.length}</span>
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Строк: {printableRows.length}</span>
                   <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Б / НБ / О / У</span>
                 </div>
               </div>
@@ -386,7 +386,7 @@ function fullName(row: Row) {
 }
 
 function withBlankJournalRows(rows: Row[], minimumRows: number) {
-  const blanksNeeded = Math.max(6, minimumRows - rows.length);
+  const blanksNeeded = Math.max(0, minimumRows - rows.length);
   const blankRows = Array.from({ length: blanksNeeded }, (_, index) => ({
     id: `blank-${index}`,
     __blank: "true",
