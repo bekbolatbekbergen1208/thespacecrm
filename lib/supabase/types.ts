@@ -157,6 +157,40 @@ export type Database = {
         };
         Relationships: [];
       };
+      crm_auth_devices: {
+        Row: {
+          id: string;
+          user_id: string;
+          device_id: string;
+          user_agent: string | null;
+          ip_address: string | null;
+          signed_in_at: string;
+          last_seen_at: string;
+          signed_out_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          device_id: string;
+          user_agent?: string | null;
+          ip_address?: string | null;
+          signed_in_at?: string;
+          last_seen_at?: string;
+          signed_out_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          device_id?: string;
+          user_agent?: string | null;
+          ip_address?: string | null;
+          signed_in_at?: string;
+          last_seen_at?: string;
+          signed_out_at?: string | null;
+        };
+        Relationships: [];
+      };
       company_members: {
         Row: {
           id: string;

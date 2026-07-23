@@ -1,7 +1,8 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { canManage, requireUser } from "@/lib/auth";
@@ -96,6 +97,8 @@ function ensureSupabase() {
 
 const FREE_EMPLOYEE_LIMIT = 5;
 const FREE_CUSTOMER_LIMIT = 500;
+const AUTH_DEVICE_COOKIE = "crm_auth_device_id";
+const AUTH_DEVICE_MAX_AGE = 60 * 60 * 24 * 365;
 const businessIndustrySchema = z.enum(BUSINESS_INDUSTRIES);
 const BAKERY_PRICES = {
   keks: 650,
@@ -121,6 +124,81 @@ function parseOrRedirect<T>(schema: z.ZodType<T>, input: unknown, redirectTo: st
     redirect(`${redirectTo}?error=${encodeURIComponent(validationMessage(result.error))}`);
   }
   return result.data;
+}
+
+async function getOrCreateAuthDeviceId() {
+  const cookieStore = await cookies();
+  const existing = cookieStore.get(AUTH_DEVICE_COOKIE)?.value;
+  if (existing && /^[a-f0-9-]{20,}$/i.test(existing)) return existing;
+
+  const deviceId = randomUUID();
+  cookieStore.set(AUTH_DEVICE_COOKIE, deviceId, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: AUTH_DEVICE_MAX_AGE,
+  });
+  return deviceId;
+}
+
+async function currentAuthDeviceId() {
+  return (await cookies()).get(AUTH_DEVICE_COOKIE)?.value ?? "";
+}
+
+async function clearAuthDeviceId() {
+  (await cookies()).delete(AUTH_DEVICE_COOKIE);
+}
+
+async function rememberAuthDevice(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const deviceId = await getOrCreateAuthDeviceId();
+  const requestHeaders = await headers();
+  const userAgent = requestHeaders.get("user-agent") ?? "Unknown device";
+  const ipAddress = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || null;
+
+  try {
+    await supabase
+      .from("crm_auth_devices")
+      .upsert(
+        {
+          user_id: userId,
+          device_id: deviceId,
+          user_agent: userAgent,
+          ip_address: ipAddress,
+          last_seen_at: new Date().toISOString(),
+          signed_out_at: null,
+        },
+        { onConflict: "user_id,device_id" },
+      );
+  } catch {
+    // Auth must keep working even before supabase/auth-sessions.sql is applied.
+  }
+}
+
+async function markCurrentAuthDeviceSignedOut(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const deviceId = await currentAuthDeviceId();
+  if (!deviceId) return;
+
+  try {
+    await supabase
+      .from("crm_auth_devices")
+      .update({ signed_out_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("device_id", deviceId);
+  } catch {
+    // Ignore missing optional session-tracking table.
+  }
+}
+
+async function markOtherAuthDevicesSignedOut(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const deviceId = await currentAuthDeviceId();
+  let query = supabase.from("crm_auth_devices").update({ signed_out_at: new Date().toISOString() }).eq("user_id", userId).is("signed_out_at", null);
+  if (deviceId) query = query.neq("device_id", deviceId);
+  try {
+    await query;
+  } catch {
+    // Ignore missing optional session-tracking table.
+  }
 }
 
 function validatePasswordPair(password: string, confirmPassword: string, redirectTo: string) {
@@ -291,11 +369,12 @@ export async function login(formData: FormData) {
   const rememberSession = value(formData, "rememberSession") === "yes";
   await setRememberSession(rememberSession);
   const supabase = await createClient({ rememberSession });
-  const { error } = await supabase.auth
+  const { data, error } = await supabase.auth
     .signInWithPassword({ email, password })
     .catch((error) => redirect(`/login?error=${encodeURIComponent(authErrorMessage(error))}`));
 
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  if (data.user) await rememberAuthDevice(supabase, data.user.id);
   redirect("/dashboard");
 }
 
@@ -320,20 +399,53 @@ export async function updatePassword(formData: FormData) {
   const confirmPassword = z.string().min(8).parse(value(formData, "confirmPassword"));
   validatePasswordPair(password, confirmPassword, "/reset-password");
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { error } = await supabase.auth
     .updateUser({ password })
     .catch((error) => redirect(`/reset-password?error=${encodeURIComponent(authErrorMessage(error))}`));
 
   if (error) redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
-  redirect("/login?message=Password updated. Sign in with your new password.");
+  await supabase.auth.signOut({ scope: "others" }).catch(() => null);
+  if (user) await markOtherAuthDevicesSignedOut(supabase, user.id);
+  redirect("/dashboard/profile?message=password-updated");
 }
 
 export async function logout() {
   ensureSupabase();
+  const { user } = await requireUser();
   const supabase = await createClient();
+  await markCurrentAuthDeviceSignedOut(supabase, user.id);
   await supabase.auth.signOut();
   await setRememberSession(false);
+  await clearAuthDeviceId();
   redirect("/login");
+}
+
+export async function logoutOtherDevices() {
+  const { supabase, user } = await requireUser();
+  await supabase.auth.signOut({ scope: "others" }).catch(() => null);
+  await markOtherAuthDevicesSignedOut(supabase, user.id);
+  revalidatePath("/dashboard/profile");
+  redirect("/dashboard/profile?message=other-devices-signed-out");
+}
+
+export async function logoutAllDevices() {
+  const { supabase, user } = await requireUser();
+  try {
+    await supabase
+      .from("crm_auth_devices")
+      .update({ signed_out_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("signed_out_at", null);
+  } catch {
+    // Ignore missing optional session-tracking table.
+  }
+  await supabase.auth.signOut({ scope: "global" }).catch(() => null);
+  await setRememberSession(false);
+  await clearAuthDeviceId();
+  redirect("/login?message=Signed out from all devices");
 }
 
 export async function createCompany(formData: FormData) {
