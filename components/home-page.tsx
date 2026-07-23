@@ -55,20 +55,20 @@ const industries = [
 const pricing = [
   {
     name: "Starter",
-    price: "$19",
+    price: "7 000 тг",
     text: "For lean teams launching operations.",
     items: ["CRM workspace", "Task boards", "Basic reports", "Mobile app access"],
   },
   {
     name: "Business",
-    price: "$59",
+    price: "19 990 тг",
     text: "For growing companies running every day in CRM.Space.",
     items: ["AI assistant", "Inventory and finance", "Team permissions", "Messaging integrations"],
     featured: true,
   },
   {
     name: "Enterprise",
-    price: "Custom",
+    price: "Договорная",
     text: "For multi-location operations with advanced controls.",
     items: ["Custom automation", "Advanced analytics", "Dedicated success", "Security review"],
   },
@@ -421,7 +421,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
               <h3 className="text-xl font-bold text-white">{plan.name}</h3>
               <div className="mt-5 flex items-end gap-2">
                 <span className="text-4xl font-black text-white">{plan.price}</span>
-                {plan.price !== "Custom" && <span className="pb-1 text-slate-400">/month</span>}
+                {plan.price !== "Договорная" && <span className="pb-1 text-slate-400">/месяц</span>}
               </div>
               <p className="mt-4 min-h-12 text-sm leading-6 text-slate-300">{plan.text}</p>
               <ul className="mt-6 space-y-3">
