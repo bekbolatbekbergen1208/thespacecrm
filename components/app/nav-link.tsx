@@ -73,6 +73,7 @@ export function NavLink({ label, href, iconKey, badge }: { label: string; href: 
   return (
     <Link
       href={href}
+      prefetch={!isAnchorLink}
       aria-current={isActive ? "page" : undefined}
       className={`group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
         isActive

@@ -32,22 +32,14 @@ export const getSessionContext = cache(async function getSessionContext() {
 
   const { data: membership } = await supabase
     .from("company_members")
-    .select("id, role, position, dashboard_route, company_id, companies(id, name, invite_code, business_type, dashboard_route, country, phone, plan)")
+    .select("id, role, position, dashboard_route, allowed_routes, company_id, companies(id, name, invite_code, business_type, dashboard_route, country, phone, plan)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  const membershipRow = membership as Omit<MembershipContext, "allowed_routes"> | null;
-  let allowedRoutes: string[] = [];
-  if (membershipRow?.id) {
-    const { data: permissionRow } = await supabase
-      .from("company_members")
-      .select("allowed_routes")
-      .eq("id", membershipRow.id)
-      .maybeSingle();
-    allowedRoutes = Array.isArray(permissionRow?.allowed_routes) ? permissionRow.allowed_routes : [];
-  }
+  const membershipRow = membership as MembershipContext | null;
+  const allowedRoutes = Array.isArray(membershipRow?.allowed_routes) ? membershipRow.allowed_routes : [];
 
   return { setupMissing: false as const, user, supabase, membership: membershipRow ? ({ ...membershipRow, allowed_routes: allowedRoutes } as MembershipContext) : null };
 });
