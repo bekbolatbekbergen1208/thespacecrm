@@ -63,19 +63,34 @@ const iconByLabel: Record<string, LucideIcon> = {
   Profile: Settings,
 };
 
-export function NavLink({ label, href, iconKey, badge }: { label: string; href: string; iconKey?: string; badge?: number }) {
+export function NavLink({
+  label,
+  href,
+  iconKey,
+  badge,
+  variant = "list",
+}: {
+  label: string;
+  href: string;
+  iconKey?: string;
+  badge?: number;
+  variant?: "list" | "tile";
+}) {
   const pathname = usePathname();
   const hrefPath = href.split("#")[0];
   const isAnchorLink = href.includes("#");
   const isActive = !isAnchorLink && (pathname === hrefPath || (hrefPath !== "/dashboard" && pathname.startsWith(`${hrefPath}/`)));
   const Icon = iconByLabel[iconKey ?? label] ?? FileText;
+  const isTile = variant === "tile";
 
   return (
     <Link
       href={href}
       prefetch={!isAnchorLink}
       aria-current={isActive ? "page" : undefined}
-      className={`group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
+      className={`group relative flex items-center gap-3 rounded-2xl text-sm font-semibold transition ${
+        isTile ? "min-h-20 px-3 py-3" : "px-3 py-2.5"
+      } ${
         isActive
           ? "text-white"
           : "text-slate-400 hover:bg-white/[0.055] hover:text-slate-100"
@@ -93,7 +108,7 @@ export function NavLink({ label, href, iconKey, badge }: { label: string; href: 
       >
         <Icon className="h-4 w-4" />
       </span>
-      <span className="relative truncate">{label}</span>
+      <span className={`relative ${isTile ? "min-w-0 whitespace-normal text-[13px] leading-4" : "truncate"}`}>{label}</span>
       {!!badge && (
         <span className="relative ml-auto grid min-w-6 place-items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-black text-white shadow-[0_0_20px_rgba(239,68,68,0.55)]">
           {badge}

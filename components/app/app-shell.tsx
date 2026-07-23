@@ -55,6 +55,18 @@ export function AppShell({
   });
   const homeRoute = role === "employee" ? employeeHomeRoute : dashboardRoute;
   const visibleNav = role === "employee" ? nav.filter(([, href]) => routeIsAllowed(href, employeeRoutes)) : nav;
+  const navItems = [
+    { href: homeRoute, label: t.dashboard, iconKey: "Dashboard" },
+    ...(isMentor && !visibleNav.some(([, href]) => href === "/dashboard/mentor")
+      ? [{ href: "/dashboard/mentor", label: translateLiteral(locale, "Мои группы"), iconKey: "Группы" }]
+      : []),
+    ...(pendingAccessCount
+      ? [{ href: "/dashboard/employees", label: translateLiteral(locale, "Заявки"), iconKey: "Employees", badge: pendingAccessCount }]
+      : []),
+    ...visibleNav.map(([label, href]) => ({ href, label: translateLiteral(locale, label), iconKey: label })),
+    { href: "/dashboard/profile", label: t.profile, iconKey: "Profile" },
+  ];
+
   return (
     <main className="min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_50%_0%,rgba(103,232,249,0.08),transparent_34rem)]" />
@@ -73,7 +85,7 @@ export function AppShell({
             </span>
           </div>
 
-          <details open className="group/company mt-4 rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+          <details className="group/company mt-3 rounded-3xl border border-white/10 bg-white/[0.035] p-4 lg:mt-4" open>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <span>
                 <span className="block truncate text-sm font-bold text-white">{companyName}</span>
@@ -101,27 +113,44 @@ export function AppShell({
             </div>
           </details>
 
-          <details open className="group/nav mt-4">
+          <details open className="group/mobile-nav mt-3 lg:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-cyan-100">
+              Моя навигация
+              <ChevronDown className="h-4 w-4 transition group-open/mobile-nav:rotate-180" />
+            </summary>
+            <nav className="mt-3 grid max-h-[42vh] grid-cols-2 gap-2 overflow-y-auto pr-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={`${item.label}-${item.href}`}
+                  href={item.href}
+                  label={item.label}
+                  iconKey={item.iconKey}
+                  badge={item.badge}
+                  variant="tile"
+                />
+              ))}
+            </nav>
+          </details>
+          <form action={logout} className="mt-3 lg:hidden">
+            <button className="premium-button w-full border border-red-300/[0.16] bg-red-500/[0.08] px-4 py-2.5 text-left text-sm text-red-100 hover:border-red-300/[0.35] hover:bg-red-500/[0.12]">
+              <LogOut className="h-4 w-4" />
+              {t.logout}
+            </button>
+          </form>
+
+          <details open className="group/nav mt-4 hidden lg:block">
             <summary className="flex cursor-pointer list-none items-center justify-between px-2 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
               {t.navigation}
               <ChevronDown className="h-4 w-4 transition group-open/nav:rotate-180" />
             </summary>
             <nav className="mt-1 grid max-h-[44vh] gap-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-420px)]">
-              <NavLink href={homeRoute} label={t.dashboard} iconKey="Dashboard" />
-              {isMentor && !visibleNav.some(([, href]) => href === "/dashboard/mentor") && (
-                <NavLink href="/dashboard/mentor" label={translateLiteral(locale, "Мои группы")} iconKey="Группы" />
-              )}
-              {!!pendingAccessCount && (
-                <NavLink href="/dashboard/employees" label={translateLiteral(locale, "Заявки")} iconKey="Employees" badge={pendingAccessCount} />
-              )}
-              {visibleNav.map(([label, href]) => (
-                <NavLink key={`${label}-${href}`} href={href} label={translateLiteral(locale, label)} iconKey={label} />
+              {navItems.map((item) => (
+                <NavLink key={`${item.label}-${item.href}`} href={item.href} label={item.label} iconKey={item.iconKey} badge={item.badge} />
               ))}
-              <NavLink href="/dashboard/profile" label={t.profile} iconKey="Profile" />
             </nav>
           </details>
 
-          <form action={logout} className="mt-4">
+          <form action={logout} className="mt-4 hidden lg:block">
             <button className="premium-button w-full border border-red-300/[0.16] bg-red-500/[0.08] px-4 py-2.5 text-left text-sm text-red-100 hover:border-red-300/[0.35] hover:bg-red-500/[0.12]">
               <LogOut className="h-4 w-4" />
               {t.logout}
