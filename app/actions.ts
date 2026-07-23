@@ -1497,6 +1497,15 @@ export async function saveRoboticsRecord(formData: FormData) {
   for (const field of crmModule.fields) {
     payload[field.name] = roboticsValue(formData, field.name, field.type);
   }
+  const previousGroup = id && moduleKey === "groups"
+    ? await supabase
+      .from("robotics_groups")
+      .select("name")
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .maybeSingle()
+    : null;
+
   if (moduleKey === "groups") {
     payload.skip_holidays = payload.skip_holidays || "no";
     payload.status = payload.status || "active";
@@ -1521,12 +1530,33 @@ export async function saveRoboticsRecord(formData: FormData) {
   if (moduleKey === "groups") {
     const groupName = String(payload.name ?? "");
     const mentorName = String(payload.mentor_name ?? "");
+    const previousGroupName = String(previousGroup?.data?.name ?? "");
     if (groupName) {
       await supabase
         .from("robotics_students")
         .update({ mentor_name: mentorName || null })
         .eq("company_id", companyId)
         .eq("group_name", groupName);
+
+      if (previousGroupName && previousGroupName !== groupName) {
+        await supabase
+          .from("robotics_students")
+          .update({ group_name: groupName, mentor_name: mentorName || null })
+          .eq("company_id", companyId)
+          .eq("group_name", previousGroupName);
+
+        await supabase
+          .from("robotics_lessons")
+          .update({ group_name: groupName, mentor_name: mentorName || null })
+          .eq("company_id", companyId)
+          .eq("group_name", previousGroupName);
+
+        await supabase
+          .from("robotics_attendance")
+          .update({ group_name: groupName, mentor_name: mentorName || null })
+          .eq("company_id", companyId)
+          .eq("group_name", previousGroupName);
+      }
     }
     revalidatePath("/dashboard/education/students");
     revalidatePath("/dashboard/education/attendance");
@@ -1698,9 +1728,33 @@ export async function deleteRoboticsRecord(formData: FormData) {
   const crmModule = getRoboticsModule(moduleKey);
   if (!crmModule.table) redirect("/dashboard/education");
   const id = z.string().uuid().parse(value(formData, "id"));
+
+  if (moduleKey === "groups") {
+    const { data: group } = await supabase
+      .from("robotics_groups")
+      .select("name")
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (group?.name) {
+      await supabase
+        .from("robotics_students")
+        .update({ group_name: null, mentor_name: null })
+        .eq("company_id", companyId)
+        .eq("group_name", group.name);
+    }
+  }
+
   const { error } = await supabase.from(crmModule.table).delete().eq("id", id).eq("company_id", companyId);
   if (error) redirect(`${crmModule.href}?error=${encodeURIComponent(error.message)}`);
   revalidatePath(crmModule.href);
+  if (moduleKey === "groups") {
+    revalidatePath("/dashboard/education/students");
+    revalidatePath("/dashboard/education/attendance");
+    revalidatePath("/dashboard/education/schedule");
+    revalidatePath("/dashboard/mentor");
+  }
 }
 
 export async function createLessonsFromGroupSchedule(formData: FormData) {

@@ -194,7 +194,7 @@ export async function RoboticsModulePage({
       )}
 
       {moduleKey === "groups" && (
-        <GroupsPanel groups={filtered} students={students} mentors={mentors} employees={employees} lessons={lessons} payments={payments} attendance={attendance} canSeeFinancials={canSeeFinancials} />
+        <GroupsPanel groups={filtered} students={students} mentors={mentors} employees={employees} lessons={lessons} payments={payments} attendance={attendance} formFields={formFields} dictionary={t} locale={locale} canSeeFinancials={canSeeFinancials} />
       )}
 
       {moduleKey === "schedule" && (
@@ -623,6 +623,9 @@ function GroupsPanel({
   lessons,
   payments,
   attendance,
+  formFields,
+  dictionary,
+  locale,
   canSeeFinancials,
 }: {
   groups: RoboticsRow[];
@@ -632,6 +635,9 @@ function GroupsPanel({
   lessons: RoboticsRow[];
   payments: RoboticsRow[];
   attendance: RoboticsRow[];
+  formFields: ReturnType<typeof getRoboticsModule>["fields"];
+  dictionary: Awaited<ReturnType<typeof getServerDictionary>>;
+  locale: Awaited<ReturnType<typeof getServerLocale>>;
   canSeeFinancials: boolean;
 }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -719,6 +725,37 @@ function GroupsPanel({
                 </label>
                 <SmallButton>Сохранить ментора</SmallButton>
               </form>
+
+              <details className="mt-4 rounded-[1.75rem] border border-white/10 bg-slate-950/30 p-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                  <span>
+                    <span className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
+                      <Pencil className="h-3.5 w-3.5" /> Редактирование группы
+                    </span>
+                    <span className="mt-1 block text-sm text-slate-400">Название, курс, возраст, расписание, кабинет, статус и заметки.</span>
+                  </span>
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+                    Открыть
+                  </span>
+                </summary>
+                <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.025] p-4">
+                  <RoboticsRecordForm
+                    moduleKey="groups"
+                    fields={formFields}
+                    action={saveRoboticsRecord}
+                    dictionary={dictionary}
+                    locale={locale}
+                    record={group}
+                    submitLabel="Сохранить группу"
+                  />
+                  <form action={deleteRoboticsRecord} className="mt-4 border-t border-white/10 pt-4">
+                    <input type="hidden" name="module" value="groups" />
+                    <input type="hidden" name="id" value={group.id} />
+                    <SmallButton danger>Удалить группу</SmallButton>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">Ученики из этой группы останутся в базе, но будут сняты с группы.</p>
+                  </form>
+                </div>
+              </details>
 
               <div className="mt-6 rounded-[1.75rem] border border-cyan-300/15 bg-slate-950/35 p-4 md:p-5">
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

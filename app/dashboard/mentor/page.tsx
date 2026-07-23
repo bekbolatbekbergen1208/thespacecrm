@@ -155,20 +155,30 @@ export default async function MentorWorkspacePage({
 
         <div className="grid gap-5">
           {!printableGroups.length && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-400">Нет групп для печати.</p>}
-          {printableGroups.map(({ group, students: groupRows }) => (
+          {printableGroups.map(({ group, students: groupRows }) => {
+            const printableRows = withBlankJournalRows(groupRows, 22);
+
+            return (
             <div key={group.id} className="mentor-print-group overflow-hidden rounded-3xl border border-white/10 bg-slate-950/35">
-              <div className="border-b border-white/10 bg-white/[0.03] px-4 py-4">
+              <div className="mentor-print-head border-b border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <h3 className="text-2xl font-black text-white">{String(group.name ?? "Группа")}</h3>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">CRM.Space · журнал посещаемости</p>
+                    <h3 className="mt-1 text-2xl font-black text-white">{String(group.name ?? "Группа")}</h3>
                     <p className="mt-1 text-sm text-slate-400">
-                      {String(group.course ?? "Курс")} · {String(group.room ?? "Кабинет")} · {String(group.start_time ?? "--:--")} - {String(group.end_time ?? "--:--")}
+                      {String(company?.name ?? "CRM.Space")} · {String(group.course ?? "Курс")} · кабинет {String(group.room ?? "-")} · {String(group.start_time ?? "--:--")} - {String(group.end_time ?? "--:--")}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
-                    <p className="text-sm font-black text-cyan-100">{groupRows.length} учеников</p>
-                    <p className="mt-1 text-xs text-slate-500">Б - был, НБ - не был, О - опоздал, У - уважительно</p>
+                    <p className="text-sm font-black text-cyan-100">{periodFrom} - {periodTo}</p>
+                    <p className="mt-1 text-xs text-slate-500">Ментор: {String(group.mentor_name ?? selectedPrintMentor ?? mentorName)}</p>
                   </div>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs font-bold text-slate-300 sm:grid-cols-4">
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Ученики: {groupRows.length}</span>
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Дней: {printDays.length}</span>
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Пустые строки: {printableRows.length - groupRows.length}</span>
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Б / НБ / О / У</span>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -177,7 +187,6 @@ export default async function MentorWorkspacePage({
                     <tr className="border-b border-white/10 text-xs uppercase tracking-[0.12em] text-slate-500">
                       <th className="w-12 px-4 py-3">№</th>
                       <th className="px-4 py-3">Имя ученика</th>
-                      <th className="px-4 py-3">Родитель</th>
                       {printDays.map((day) => (
                         <th key={day.iso} className="mentor-print-day px-2 py-3 text-center">{day.label}</th>
                       ))}
@@ -188,19 +197,20 @@ export default async function MentorWorkspacePage({
                   <tbody className="divide-y divide-white/10">
                     {!groupRows.length && (
                       <tr>
-                        <td colSpan={printDays.length + 5} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников.</td>
+                        <td colSpan={printDays.length + 4} className="px-4 py-5 text-center text-slate-500">В этой группе пока нет учеников. Ниже оставлены пустые строки для заполнения.</td>
                       </tr>
                     )}
-                    {groupRows.map((student, index) => {
+                    {printableRows.map((student, index) => {
                       const name = fullName(student);
+                      const isBlank = Boolean(student.__blank);
                       return (
                         <tr key={student.id}>
                           <td className="px-4 py-3 font-black text-slate-400">{index + 1}</td>
-                          <td className="px-4 py-3 font-black text-white">{name}</td>
-                          <td className="px-4 py-3 text-slate-300">{String(student.parent_name ?? "")}</td>
+                          <td className="px-4 py-3 font-black text-white">{isBlank ? <span className="print-wide-line" /> : name}</td>
                           {printDays.map((day) => {
                             const mark = periodAttendance.find(
                               (item) =>
+                                !isBlank &&
                                 String(item.student_name ?? "") === name &&
                                 String(item.group_name ?? "") === String(group.name ?? "") &&
                                 String(item.lesson_date ?? "") === day.iso,
@@ -219,13 +229,15 @@ export default async function MentorWorkspacePage({
                   </tbody>
                 </table>
               </div>
-              <div className="mentor-print-signature grid gap-4 border-t border-white/10 px-4 py-4 text-sm text-slate-400 md:grid-cols-3">
-                <p>Тема урока: <span className="print-sign-line" /></p>
+              <div className="mentor-print-signature grid gap-3 border-t border-white/10 px-4 py-4 text-sm text-slate-400 md:grid-cols-4">
+                <p>Итог месяца: <span className="print-sign-line" /></p>
                 <p>Подпись ментора: <span className="print-sign-line" /></p>
                 <p>Подпись администратора: <span className="print-sign-line" /></p>
+                <p>Дата проверки: <span className="print-sign-line" /></p>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -371,6 +383,16 @@ export default async function MentorWorkspacePage({
 
 function fullName(row: Row) {
   return [row.first_name, row.last_name].filter(Boolean).join(" ") || String(row.student_name ?? row.name ?? "-");
+}
+
+function withBlankJournalRows(rows: Row[], minimumRows: number) {
+  const blanksNeeded = Math.max(6, minimumRows - rows.length);
+  const blankRows = Array.from({ length: blanksNeeded }, (_, index) => ({
+    id: `blank-${index}`,
+    __blank: "true",
+  }));
+
+  return [...rows, ...blankRows];
 }
 
 function isDateInput(value?: string) {
