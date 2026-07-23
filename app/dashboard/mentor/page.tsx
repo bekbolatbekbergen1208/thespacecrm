@@ -70,8 +70,8 @@ export default async function MentorWorkspacePage({
       <PrintButton label="Печать журнала" floating />
 
       <PageHeader
-        title="Кабинет ментора"
-        description="Группы, тема урока, посещаемость и оценки учеников на сегодня."
+        title="Журнал посещаемости"
+        description="Отдельная страница для печати A4-журналов по группам, а ниже кабинет ментора для уроков."
       />
       {params.error && <p className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{params.error}</p>}
       {params.saved && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-3 text-sm font-semibold text-emerald-100">Урок сохранён: тема, посещаемость и оценки обновлены.</p>}

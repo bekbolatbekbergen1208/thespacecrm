@@ -1487,10 +1487,13 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function saveRoboticsRecord(formData: FormData) {
-  const { supabase, companyId } = await companyContext();
+  const { supabase, companyId, role } = await companyContext();
   const moduleKey = value(formData, "module") as RoboticsModuleKey;
   const crmModule = getRoboticsModule(moduleKey);
   if (!crmModule.table) redirect("/dashboard/education");
+  if (moduleKey === "groups" && !canManage(role)) {
+    redirect(`/dashboard/education/groups?error=${encodeURIComponent("Только founder/admin/manager может редактировать группы")}`);
+  }
 
   const id = value(formData, "id");
   const payload: Record<string, string | number | null> = {};
@@ -1723,10 +1726,13 @@ export async function saveStudentGrade(formData: FormData) {
 }
 
 export async function deleteRoboticsRecord(formData: FormData) {
-  const { supabase, companyId } = await companyContext();
+  const { supabase, companyId, role } = await companyContext();
   const moduleKey = value(formData, "module") as RoboticsModuleKey;
   const crmModule = getRoboticsModule(moduleKey);
   if (!crmModule.table) redirect("/dashboard/education");
+  if (moduleKey === "groups" && !canManage(role)) {
+    redirect(`/dashboard/education/groups?error=${encodeURIComponent("Только founder/admin/manager может удалять группы")}`);
+  }
   const id = z.string().uuid().parse(value(formData, "id"));
 
   if (moduleKey === "groups") {

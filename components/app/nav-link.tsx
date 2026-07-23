@@ -26,6 +26,7 @@ const iconByLabel: Record<string, LucideIcon> = {
   Ученики: GraduationCap,
   Оплаты: CreditCard,
   Посещаемость: ClipboardList,
+  "Журнал посещаемости": ClipboardList,
   Расписание: CalendarDays,
   "Пробные уроки": Bell,
   Абонементы: WalletCards,

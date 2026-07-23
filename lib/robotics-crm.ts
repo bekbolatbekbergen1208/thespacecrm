@@ -64,7 +64,7 @@ export const roboticsPrimaryNav = [
   ["Оплаты", "/dashboard/education/payments"],
   ["Договоры", "/dashboard/education/contract"],
   ["Мои группы", "/dashboard/mentor"],
-  ["Журнал ментора", "/dashboard/education/mentor-journal"],
+  ["Журнал посещаемости", "/dashboard/education/mentor-journal"],
   ["Управление сотрудниками", "/dashboard/employees"],
   ["Отчёты", "/dashboard/education/reports"],
 ] as const;

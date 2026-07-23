@@ -17,7 +17,7 @@ import { PaymentReminderLink } from "@/components/app/payment-reminder-link";
 import { RoboticsExportButtons } from "@/components/app/robotics-export-buttons";
 import { RoboticsRecordForm } from "@/components/app/robotics-record-form";
 import { SmallButton } from "@/components/app/forms";
-import { requireUser } from "@/lib/auth";
+import { canManage, requireUser } from "@/lib/auth";
 import { translateLiteral } from "@/lib/i18n";
 import { getServerDictionary, getServerLocale } from "@/lib/i18n-server";
 import { getRoboticsModule, type RoboticsModuleKey } from "@/lib/robotics-crm";
@@ -46,6 +46,7 @@ export async function RoboticsModulePage({
   const crmModule = getRoboticsModule(moduleKey);
   const companyId = membership!.company_id;
   const canSeeFinancials = membership!.role !== "employee";
+  const canManageEducation = canManage(membership!.role);
 
   if (!crmModule.table) {
     const [studentsResult, attendanceResult, subscriptionsResult, gradesResult, lessonsResult] = await Promise.all([
@@ -194,7 +195,7 @@ export async function RoboticsModulePage({
       )}
 
       {moduleKey === "groups" && (
-        <GroupsPanel groups={filtered} students={students} mentors={mentors} employees={employees} lessons={lessons} payments={payments} attendance={attendance} formFields={formFields} dictionary={t} locale={locale} canSeeFinancials={canSeeFinancials} />
+        <GroupsPanel groups={filtered} students={students} mentors={mentors} employees={employees} lessons={lessons} payments={payments} attendance={attendance} formFields={formFields} dictionary={t} locale={locale} canSeeFinancials={canSeeFinancials} canManageEducation={canManageEducation} />
       )}
 
       {moduleKey === "schedule" && (
@@ -627,6 +628,7 @@ function GroupsPanel({
   dictionary,
   locale,
   canSeeFinancials,
+  canManageEducation,
 }: {
   groups: RoboticsRow[];
   students: RoboticsRow[];
@@ -639,6 +641,7 @@ function GroupsPanel({
   dictionary: Awaited<ReturnType<typeof getServerDictionary>>;
   locale: Awaited<ReturnType<typeof getServerLocale>>;
   canSeeFinancials: boolean;
+  canManageEducation: boolean;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const mentorNames = unique([
@@ -726,6 +729,7 @@ function GroupsPanel({
                 <SmallButton>Сохранить ментора</SmallButton>
               </form>
 
+              {canManageEducation && (
               <details className="mt-4 rounded-[1.75rem] border border-white/10 bg-slate-950/30 p-4">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                   <span>
@@ -756,6 +760,7 @@ function GroupsPanel({
                   </form>
                 </div>
               </details>
+              )}
 
               <div className="mt-6 rounded-[1.75rem] border border-cyan-300/15 bg-slate-950/35 p-4 md:p-5">
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
