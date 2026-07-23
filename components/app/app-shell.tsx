@@ -55,7 +55,7 @@ export function AppShell({
   });
   const homeRoute = role === "employee" ? employeeHomeRoute : dashboardRoute;
   const visibleNav = role === "employee" ? nav.filter(([, href]) => routeIsAllowed(href, employeeRoutes)) : nav;
-  const navItems = [
+  const leadingNavItems: Array<{ href: string; label: string; iconKey: string; badge?: number }> = [
     { href: homeRoute, label: personalizeNavLabel(t.dashboard, locale), iconKey: "Dashboard" },
     ...(isMentor && !visibleNav.some(([, href]) => href === "/dashboard/mentor")
       ? [{ href: "/dashboard/mentor", label: personalizeNavLabel(translateLiteral(locale, "Мои группы"), locale), iconKey: "Группы" }]
@@ -63,7 +63,13 @@ export function AppShell({
     ...(pendingAccessCount
       ? [{ href: "/dashboard/employees", label: personalizeNavLabel(translateLiteral(locale, "Заявки"), locale), iconKey: "Employees", badge: pendingAccessCount }]
       : []),
-    ...visibleNav.map(([label, href]) => ({ href, label: personalizeNavLabel(translateLiteral(locale, label), locale), iconKey: label })),
+  ];
+  const leadingHrefs = new Set(leadingNavItems.map((item) => item.href));
+  const navItems: Array<{ href: string; label: string; iconKey: string; badge?: number }> = [
+    ...leadingNavItems,
+    ...visibleNav
+      .filter(([, href]) => !leadingHrefs.has(href))
+      .map(([label, href]) => ({ href, label: personalizeNavLabel(translateLiteral(locale, label), locale), iconKey: label })),
     { href: "/dashboard/profile", label: personalizeNavLabel(t.profile, locale), iconKey: "Profile" },
   ];
 
