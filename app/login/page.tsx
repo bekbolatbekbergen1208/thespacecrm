@@ -27,6 +27,21 @@ export default async function LoginPage({
       <form action={login} className="space-y-4">
         <Field label="Email" name="email" type="email" />
         <Field label="Password" name="password" type="password" />
+        <label className="group flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10">
+          <input
+            name="rememberSession"
+            type="checkbox"
+            value="yes"
+            defaultChecked
+            className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950 accent-cyan-300 outline-none"
+          />
+          <span>
+            <span className="block font-black text-white">Оставаться в системе</span>
+            <span className="mt-1 block text-xs leading-5 text-slate-400">
+              Безопасно держать вход на этом устройстве, пока вы сами не нажмёте “Выйти”.
+            </span>
+          </span>
+        </label>
         <SubmitButton>Log in</SubmitButton>
       </form>
       <form action={forgotPassword} className="mt-6 border-t border-white/10 pt-5">

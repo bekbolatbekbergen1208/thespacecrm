@@ -9,7 +9,7 @@ import { routesForEmployeePosition } from "@/lib/employee-positions";
 import { EDUCATION_EMPLOYEE_ROUTES } from "@/lib/employee-permissions";
 import { BUSINESS_INDUSTRIES, dashboardRouteForIndustry } from "@/lib/industries";
 import { getRoboticsModule, roboticsModuleList, type RoboticsModuleKey } from "@/lib/robotics-crm";
-import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
+import { createClient, hasSupabaseEnv, setRememberSession } from "@/lib/supabase/server";
 import type { Role, TaskStatus } from "@/lib/supabase/types";
 
 function value(formData: FormData, key: string) {
@@ -288,7 +288,9 @@ export async function login(formData: FormData) {
   ensureSupabase();
   const email = value(formData, "email");
   const password = value(formData, "password");
-  const supabase = await createClient();
+  const rememberSession = value(formData, "rememberSession") === "yes";
+  await setRememberSession(rememberSession);
+  const supabase = await createClient({ rememberSession });
   const { error } = await supabase.auth
     .signInWithPassword({ email, password })
     .catch((error) => redirect(`/login?error=${encodeURIComponent(authErrorMessage(error))}`));
@@ -330,6 +332,7 @@ export async function logout() {
   ensureSupabase();
   const supabase = await createClient();
   await supabase.auth.signOut();
+  await setRememberSession(false);
   redirect("/login");
 }
 
