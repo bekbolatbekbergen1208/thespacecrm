@@ -12,6 +12,8 @@ alter table public.companies add column if not exists subscription_due_date date
 alter table public.companies add column if not exists monthly_fee numeric(12,2) not null default 0;
 alter table public.companies add column if not exists blocked_at timestamptz;
 alter table public.companies add column if not exists last_paid_at timestamptz;
+alter table public.companies add column if not exists logo_url text;
+alter table public.companies add column if not exists brand_phrase text;
 
 create table if not exists public.platform_admins (
   id uuid primary key default gen_random_uuid(),

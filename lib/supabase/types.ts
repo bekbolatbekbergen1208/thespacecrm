@@ -52,6 +52,8 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          logo_url: string | null;
+          brand_phrase: string | null;
           business_type: string;
           dashboard_route: string;
           country: string;
@@ -69,6 +71,8 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
+          logo_url?: string | null;
+          brand_phrase?: string | null;
           business_type?: string;
           dashboard_route?: string;
           country?: string;
@@ -85,6 +89,8 @@ export type Database = {
         };
         Update: {
           name?: string;
+          logo_url?: string | null;
+          brand_phrase?: string | null;
           business_type?: string;
           dashboard_route?: string;
           country?: string;

@@ -1,10 +1,23 @@
 export function BrandLogo({
   className = "h-10 w-10",
   title = "CRM.Space",
+  imageUrl,
 }: {
   className?: string;
   title?: string;
+  imageUrl?: string | null;
 }) {
+  if (imageUrl) {
+    return (
+      <span
+        className={`relative inline-grid shrink-0 place-items-center overflow-hidden rounded-[30%] bg-white bg-cover bg-center ${className}`}
+        style={{ backgroundImage: `url(${imageUrl})` }}
+        aria-label={`${title} logo`}
+        role="img"
+      />
+    );
+  }
+
   return (
     <span className={`relative inline-grid shrink-0 place-items-center ${className}`} aria-label={`${title} logo`}>
       <span className="absolute inset-0 rounded-[30%] bg-fuchsia-500/20 blur-xl" />

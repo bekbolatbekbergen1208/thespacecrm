@@ -25,6 +25,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <AppShell
       companyName={company?.name ?? "CRM.Space"}
+      companyLogoUrl={company?.logo_url ?? null}
+      companyPhrase={company?.brand_phrase ?? null}
       companyId={company?.id ?? membership.company_id}
       inviteCode={company?.invite_code ?? ""}
       role={membership.role as Role}

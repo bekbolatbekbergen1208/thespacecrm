@@ -15,6 +15,8 @@ create table public.profiles (
 create table public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  logo_url text,
+  brand_phrase text,
   business_type text not null default 'Other',
   dashboard_route text not null default '/dashboard/other',
   country text not null default 'United States',
@@ -24,6 +26,9 @@ create table public.companies (
   created_by uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+alter table public.companies add column if not exists logo_url text;
+alter table public.companies add column if not exists brand_phrase text;
 
 create table public.company_members (
   id uuid primary key default gen_random_uuid(),

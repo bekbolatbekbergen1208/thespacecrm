@@ -85,6 +85,8 @@ export default async function OnboardingPage({
             <p className="mt-2 text-sm leading-6 text-slate-300">{t.founderDesc}</p>
             <div className="mt-5 space-y-4">
               <Field label={t.companyName} name="companyName" />
+              <Field label="URL логотипа компании" name="logoUrl" type="url" required={false} />
+              <Field label="Фраза компании" name="brandPhrase" required={false} />
               <Select label={t.businessIndustry} name="businessType" defaultValue="Retail Store">
                 {BUSINESS_INDUSTRIES.map((industry) => (
                   <option key={industry} value={industry}>{industry}</option>

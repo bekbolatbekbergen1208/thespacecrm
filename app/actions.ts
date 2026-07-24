@@ -452,12 +452,16 @@ export async function createCompany(formData: FormData) {
   const { user, supabase } = await requireUser();
   const schema = z.object({
     companyName: z.string().min(2),
+    logoUrl: z.string().url().optional().or(z.literal("")),
+    brandPhrase: z.string().max(90).optional(),
     businessType: businessIndustrySchema,
     country: z.string().optional(),
     phone: z.string().optional(),
   });
   const input = parseOrRedirect(schema, {
     companyName: value(formData, "companyName"),
+    logoUrl: value(formData, "logoUrl"),
+    brandPhrase: value(formData, "brandPhrase"),
     businessType: value(formData, "businessType"),
     country: value(formData, "country"),
     phone: value(formData, "phone"),
@@ -478,6 +482,13 @@ export async function createCompany(formData: FormData) {
     .single();
 
   if (error) redirect(`/onboarding?error=${encodeURIComponent(error.message)}`);
+  await supabase
+    .from("companies")
+    .update({
+      logo_url: input.logoUrl || null,
+      brand_phrase: input.brandPhrase || "Премиум CRM для вашего бизнеса",
+    })
+    .eq("id", company.id);
   const { error: memberError } = await supabase
     .from("company_members")
     .insert({ company_id: company.id, user_id: user.id, role: "founder", position: "Founder", dashboard_route: dashboardRoute });
@@ -1468,8 +1479,14 @@ export async function updateCompany(formData: FormData) {
     country: z.string().min(2).parse(value(formData, "country")),
     phone: value(formData, "phone") || null,
   };
+  const brandPayload = {
+    logo_url: z.string().url().optional().or(z.literal("")).parse(value(formData, "logoUrl")) || null,
+    brand_phrase: z.string().max(90).optional().parse(value(formData, "brandPhrase")) || null,
+  };
   const { error } = await supabase.from("companies").update(payload).eq("id", companyId);
   if (error) redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  const { error: brandError } = await supabase.from("companies").update(brandPayload).eq("id", companyId);
+  if (brandError) redirect(`/dashboard/settings?error=${encodeURIComponent(brandError.message)}`);
   await supabase.from("company_members").update({ dashboard_route: dashboardRoute }).eq("company_id", companyId);
   revalidatePath("/dashboard/settings");
   revalidatePath(dashboardRoute);

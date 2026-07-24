@@ -11,8 +11,8 @@ export type MembershipContext = {
   allowed_routes?: string[] | null;
   company_id: string;
   companies:
-    | { id: string; name: string; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }
-    | { id: string; name: string; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }[]
+    | { id: string; name: string; logo_url: string | null; brand_phrase: string | null; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }
+    | { id: string; name: string; logo_url: string | null; brand_phrase: string | null; invite_code: string; business_type: string; dashboard_route: string; country: string; phone: string | null; plan: string }[]
     | null;
 };
 
@@ -32,7 +32,7 @@ export const getSessionContext = cache(async function getSessionContext() {
 
   const { data: membership } = await supabase
     .from("company_members")
-    .select("id, role, position, dashboard_route, allowed_routes, company_id, companies(id, name, invite_code, business_type, dashboard_route, country, phone, plan)")
+    .select("id, role, position, dashboard_route, allowed_routes, company_id, companies(*)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)

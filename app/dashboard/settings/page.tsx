@@ -41,6 +41,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <h2 className="text-xl font-bold">{tt("Company Information")}</h2>
           <form action={updateCompany} className="mt-5 grid gap-4 md:grid-cols-2">
             <Field label={tt("Company Name")} name="companyName" defaultValue={company?.name ?? ""} />
+            <Field label="URL логотипа компании" name="logoUrl" type="url" defaultValue={company?.logo_url ?? ""} required={false} />
+            <Field label="Фраза компании" name="brandPhrase" defaultValue={company?.brand_phrase ?? ""} required={false} />
             <Select label={tt("Business Industry")} name="businessType" defaultValue={normalizeIndustry(company?.business_type)}>
               {BUSINESS_INDUSTRIES.map((industry) => (
                 <option key={industry} value={industry}>{tt(industry)}</option>

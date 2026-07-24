@@ -12,6 +12,8 @@ import { Bell, ChevronDown, Command, LogOut, Plus, Search, Sparkles } from "luci
 export function AppShell({
   children,
   companyName,
+  companyLogoUrl,
+  companyPhrase,
   companyId,
   inviteCode,
   role,
@@ -26,6 +28,8 @@ export function AppShell({
 }: {
   children: React.ReactNode;
   companyName: string;
+  companyLogoUrl?: string | null;
+  companyPhrase?: string | null;
   companyId: string;
   inviteCode: string;
   role: Role;
@@ -80,10 +84,10 @@ export function AppShell({
         <aside className="border-b border-white/10 bg-slate-950/[0.78] p-3 backdrop-blur-2xl lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:h-screen lg:w-80 lg:overflow-hidden lg:border-b-0 lg:border-r lg:p-4">
           <div className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             <Link href={homeRoute} className="group flex min-w-0 items-center gap-3">
-              <BrandLogo className="h-10 w-10" />
+              <BrandLogo className="h-10 w-10" title={companyName} imageUrl={companyLogoUrl} />
               <span className="min-w-0">
-                <span className="block truncate text-base font-black tracking-tight">CRM.Space</span>
-                <span className="block truncate text-xs text-slate-400">{t.premiumCrm}</span>
+                <span className="block truncate text-base font-black tracking-tight">{companyName}</span>
+                <span className="block truncate text-xs text-slate-400">{companyPhrase || t.premiumCrm}</span>
               </span>
             </Link>
             <span className="hidden rounded-full border border-cyan-300/[0.18] bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100 sm:inline-flex">
