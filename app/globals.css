@@ -351,10 +351,19 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   body {
     background: #ffffff !important;
     color: #0f172a !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   body * {
     visibility: hidden !important;
+  }
+
+  main,
+  section,
+  div {
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .print-area,
@@ -363,7 +372,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .print-area {
-    position: absolute !important;
+    position: static !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
@@ -382,15 +391,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   .mentor-print-group {
     break-after: page;
     page-break-after: always;
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
     min-height: 186mm !important;
     border: 1.5px solid #0f172a !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     box-shadow: none !important;
     margin-bottom: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .mentor-print-group:last-child {
