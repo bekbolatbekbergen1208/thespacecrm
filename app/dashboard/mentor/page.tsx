@@ -11,6 +11,8 @@ type Row = {
   [key: string]: string | number | null;
 };
 
+const MAX_PRINT_STUDENTS_PER_GROUP = 15;
+
 export default async function MentorWorkspacePage({
   searchParams,
 }: {
@@ -156,7 +158,9 @@ export default async function MentorWorkspacePage({
         <div className="grid gap-5">
           {!printableGroups.length && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-400">Нет групп для печати.</p>}
           {printableGroups.map(({ group, students: groupRows }) => {
-            const printableRows = withBlankJournalRows(groupRows, 22);
+            const printedGroupRows = groupRows.slice(0, MAX_PRINT_STUDENTS_PER_GROUP);
+            const hiddenStudentsCount = Math.max(0, groupRows.length - printedGroupRows.length);
+            const printableRows = withBlankJournalRows(printedGroupRows, MAX_PRINT_STUDENTS_PER_GROUP);
 
             return (
             <div key={group.id} className="mentor-print-group overflow-hidden rounded-3xl border border-white/10 bg-slate-950/35">
@@ -175,11 +179,16 @@ export default async function MentorWorkspacePage({
                   </div>
                 </div>
                 <div className="mt-3 grid gap-2 text-xs font-bold text-slate-300 sm:grid-cols-4">
-                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Ученики: {groupRows.length}</span>
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Ученики: {printedGroupRows.length} / {groupRows.length}</span>
                   <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Дней: {printDays.length}</span>
-                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Строк: {printableRows.length}</span>
+                  <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Максимум: {MAX_PRINT_STUDENTS_PER_GROUP}</span>
                   <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Б / НБ / О / У</span>
                 </div>
+                {hiddenStudentsCount > 0 && (
+                  <p className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-100">
+                    В печать попали первые {MAX_PRINT_STUDENTS_PER_GROUP} учеников. Осталось вне листа: {hiddenStudentsCount}.
+                  </p>
+                )}
               </div>
               <div className="overflow-x-auto">
                 <table className="mentor-print-table min-w-full border-collapse text-left text-sm">
