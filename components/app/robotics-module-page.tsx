@@ -1013,12 +1013,13 @@ function CalendarPanel({
   const markedCount = scheduledPairs.filter((pair) => markedPairs.has(pair)).length;
   const notMarkedCount = Math.max(0, scheduledPairs.length - markedCount);
   return (
-    <section className="mt-5 overflow-hidden rounded-[2rem] border border-blue-200 bg-[#f6fbff] text-slate-950 shadow-2xl shadow-cyan-950/20">
-      <div className="border-b border-blue-100 bg-white/90 px-5 py-5 backdrop-blur md:px-8">
+    <section className="mt-5 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 text-slate-950 shadow-2xl shadow-cyan-950/20">
+      <div className="border-b border-slate-200 bg-gradient-to-br from-white via-[#f8fbff] to-blue-50 px-5 py-5 backdrop-blur md:px-8">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Центр управления</p>
-            <h2 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-6xl">Расписание</h2>
+            <h2 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">Расписание</h2>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">Дни недели, временные слоты, свободные окна и уроки группы в одной удобной таблице.</p>
           </div>
           <form className="grid gap-2 md:grid-cols-[1fr_auto_auto] xl:min-w-[760px]">
             <label className="relative">
@@ -1032,9 +1033,9 @@ function CalendarPanel({
         </div>
       </div>
 
-      <div className="px-4 py-6 md:px-6">
+      <div className="bg-[#eef6ff] px-4 py-6 md:px-6">
         <div className="mb-5 grid gap-3 lg:grid-cols-3">
-          <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
+          <div className="rounded-[1.5rem] border border-blue-100 bg-white p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Ученики в расписании</p>
             <h3 className="mt-2 text-3xl font-black text-slate-950">{visibleScheduleStudents.length}</h3>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -1044,94 +1045,94 @@ function CalendarPanel({
               {visibleScheduleStudents.length > 8 && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">+{visibleScheduleStudents.length - 8}</span>}
             </div>
           </div>
-          <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4 shadow-sm">
+          <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Посещаемость отмечена</p>
             <h3 className="mt-2 text-3xl font-black text-emerald-800">{markedCount}</h3>
             <p className="mt-2 text-sm font-semibold text-emerald-700">Записи уже сохранены в журнале.</p>
           </div>
-          <div className={`rounded-3xl border p-4 shadow-sm ${notMarkedCount ? "border-red-200 bg-red-50" : "border-blue-100 bg-white"}`}>
+          <div className={`rounded-[1.5rem] border p-4 shadow-sm ${notMarkedCount ? "border-red-200 bg-red-50" : "border-blue-100 bg-white"}`}>
             <p className={`text-xs font-black uppercase tracking-[0.14em] ${notMarkedCount ? "text-red-600" : "text-slate-500"}`}>Нужно отметить</p>
             <h3 className={`mt-2 text-3xl font-black ${notMarkedCount ? "text-red-700" : "text-slate-950"}`}>{notMarkedCount}</h3>
             <p className="mt-2 text-sm font-semibold text-slate-500">Открой урок и нажми Был / Нет / Опоздал.</p>
           </div>
         </div>
 
-        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h3 className="text-2xl font-black tracking-tight text-slate-950">Таблица расписания</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Заполненные и свободные занятия по дням недели и времени.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(["day", "week", "month"] as const).map((item) => (
-            <a key={item} href={calendarHref(params, item)} className={`rounded-full border px-4 py-2 text-sm font-black transition ${view === item ? "border-blue-300 bg-blue-600 text-white shadow-lg shadow-blue-200" : "border-blue-100 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"}`}>
-              {item === "day" ? "День" : item === "week" ? "Неделя" : "Месяц"}
-            </a>
-          ))}
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">{timeSlots.length} временных слотов</span>
-        </div>
-      </div>
-
-      <form className="mb-5 grid gap-3 rounded-3xl border border-blue-100 bg-white p-4 lg:grid-cols-[1fr_1fr_1fr_auto]">
-        <input type="hidden" name="date" value={selectedDate} />
-        <input type="hidden" name="view" value={view} />
-        <input name="group" defaultValue={params.group ?? ""} placeholder="Фильтр по группе" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
-        <input name="mentor" defaultValue={params.mentor ?? ""} placeholder="Фильтр по ментору" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
-        <input name="room" defaultValue={params.room ?? ""} placeholder="Кабинет" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
-        <button className="h-11 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700">
-          Применить
-        </button>
-      </form>
-
-      <div className="overflow-auto rounded-3xl border border-blue-200 bg-white">
-        <table className="w-full min-w-[1280px] border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur">
-            <tr className="border-b border-blue-100">
-              <th className="sticky left-0 z-30 w-28 bg-slate-50/95 px-4 py-5 text-xs font-black uppercase tracking-[0.08em] text-slate-900">Время</th>
-              {weekDates.map((date) => (
-                <th key={date} className="min-w-56 border-l border-blue-100 px-4 py-5">
-                  <p className="text-base font-black uppercase tracking-[0.04em] text-slate-500">{weekdayShortLabel(date)}</p>
-                  <p className="mt-1 text-xs font-black text-blue-600">{formatDateLabel(date)}</p>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-blue-100">
-            {timeSlots.map((slot) => (
-              <tr key={slot} className="min-h-40 align-top">
-                <td className="sticky left-0 z-10 bg-slate-50 px-4 py-5">
-                  <span className="text-base font-black text-slate-950">
-                    {slot}
-                  </span>
-                </td>
-                {weekDates.map((date) => {
-                  const events = rows.filter((row) => String(row.lesson_date ?? "") === date && normalizeTime(String(row.lesson_time ?? "")) === slot);
-                  return (
-                    <td key={`${date}-${slot}`} className="h-44 border-l border-blue-100 bg-white px-3 py-4 odd:bg-[#f7fbff]">
-                      {events.length ? (
-                        <div className="grid gap-3">
-                          {events.map((event) => (
-                            <ScheduleEventCard
-                              key={event.id}
-                              event={event}
-                              students={students}
-                              attendance={attendance}
-                              groupOptions={groupOptions}
-                              mentorOptions={mentorOptions}
-                              roomOptions={roomOptions}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <AddLessonCell date={date} time={slot} groupOptions={groupOptions} mentorOptions={mentorOptions} roomOptions={roomOptions} />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
+        <div className="mb-5 flex flex-col gap-3 rounded-[1.5rem] border border-blue-100 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-2xl font-black tracking-tight text-slate-950">Таблица расписания</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Заполненные и свободные занятия по дням недели и времени.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["day", "week", "month"] as const).map((item) => (
+              <a key={item} href={calendarHref(params, item)} className={`rounded-full border px-4 py-2 text-sm font-black transition ${view === item ? "border-blue-300 bg-blue-600 text-white shadow-lg shadow-blue-200" : "border-blue-100 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"}`}>
+                {item === "day" ? "День" : item === "week" ? "Неделя" : "Месяц"}
+              </a>
             ))}
-          </tbody>
-        </table>
-      </div>
+            <span className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">{timeSlots.length} временных слотов</span>
+          </div>
+        </div>
+
+        <form className="mb-5 grid gap-3 rounded-[1.5rem] border border-blue-100 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_1fr_auto]">
+          <input type="hidden" name="date" value={selectedDate} />
+          <input type="hidden" name="view" value={view} />
+          <input name="group" defaultValue={params.group ?? ""} placeholder="Фильтр по группе" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+          <input name="mentor" defaultValue={params.mentor ?? ""} placeholder="Фильтр по ментору" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+          <input name="room" defaultValue={params.room ?? ""} placeholder="Кабинет" className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100" />
+          <button className="h-11 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700">
+            Применить
+          </button>
+        </form>
+
+        <div className="overflow-auto rounded-[1.5rem] border border-blue-200 bg-white shadow-xl shadow-blue-950/5">
+          <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
+            <thead className="sticky top-0 z-20 bg-white/95 backdrop-blur">
+              <tr className="border-b border-blue-100">
+                <th className="sticky left-0 z-30 w-24 bg-white/95 px-4 py-4 text-xs font-black uppercase tracking-[0.08em] text-slate-900">Время</th>
+                {weekDates.map((date) => (
+                  <th key={date} className="min-w-44 border-l border-blue-100 px-4 py-4">
+                    <p className="text-sm font-black uppercase tracking-[0.04em] text-slate-500">{weekdayShortLabel(date)}</p>
+                    <p className="mt-1 text-xs font-black text-blue-600">{formatDateLabel(date)}</p>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-blue-100">
+              {timeSlots.map((slot) => (
+                <tr key={slot} className="align-top transition hover:bg-blue-50/40">
+                  <td className="sticky left-0 z-10 bg-white px-4 py-4">
+                    <span className="text-base font-black text-slate-950">
+                      {slot}
+                    </span>
+                  </td>
+                  {weekDates.map((date) => {
+                    const events = rows.filter((row) => String(row.lesson_date ?? "") === date && normalizeTime(String(row.lesson_time ?? "")) === slot);
+                    return (
+                      <td key={`${date}-${slot}`} className="h-36 border-l border-blue-100 bg-white px-2.5 py-3 odd:bg-[#f8fbff]">
+                        {events.length ? (
+                          <div className="grid gap-3">
+                            {events.map((event) => (
+                              <ScheduleEventCard
+                                key={event.id}
+                                event={event}
+                                students={students}
+                                attendance={attendance}
+                                groupOptions={groupOptions}
+                                mentorOptions={mentorOptions}
+                                roomOptions={roomOptions}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <AddLessonCell date={date} time={slot} groupOptions={groupOptions} mentorOptions={mentorOptions} roomOptions={roomOptions} />
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
       {view === "month" && (
         <div className="mt-5 grid gap-4 xl:grid-cols-3">
@@ -1176,37 +1177,36 @@ function ScheduleEventCard({
   const rosterSlots: Array<RoboticsRow | null> = eventStudents.length ? eventStudents : Array.from({ length: 8 }, () => null);
 
   return (
-    <details open className={event.status === "cancelled" ? "rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm" : "rounded-2xl border border-blue-100 bg-white p-4 shadow-sm shadow-blue-100/60"}>
+    <details className={event.status === "cancelled" ? "group rounded-2xl border border-red-200 bg-red-50 p-3 shadow-sm" : "group rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/50 p-3 shadow-sm shadow-blue-100/60"}>
       <summary className="cursor-pointer list-none">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-2xl font-black text-slate-950">{normalizeTime(String(event.lesson_time ?? "-"))}</p>
-            <p className="mt-3 text-2xl font-black text-[#0b2c61]">{String(event.group_name ?? event.student_name ?? event.topic ?? "Событие")}</p>
-            <p className="mt-3 text-sm font-black leading-5 text-slate-500">
+            <p className="text-sm font-black text-blue-700">{normalizeTime(String(event.lesson_time ?? "-"))}</p>
+            <p className="mt-2 text-lg font-black leading-5 text-[#0b2c61]">{String(event.group_name ?? event.student_name ?? event.topic ?? "Событие")}</p>
+            <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
               {String(event.topic ?? "Программа")} · {eventStudents.length || "0"} мест
               <br />
               · {String(event.mentor_name ?? "-")}
             </p>
           </div>
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">по расписанию</span>
+          <span className="rounded-full border border-blue-100 bg-white px-2.5 py-1 text-[10px] font-black text-slate-500">урок</span>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-blue-100">
           <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(12, (occupied / 8) * 100)}%` }} />
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1">
           {rosterSlots.slice(0, 8).map((student, index) => {
             const name = student ? fullName(student) : "";
             const current = eventAttendance.find((item) => item.student_name === name);
             return (
-            <span key={`${event.id}-${student?.id ?? index}`} title={name || "Свободное место"} className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-black ${student ? attendancePillClass(String(current?.status ?? "")) : "border-blue-100 bg-white text-slate-400"}`}>
+            <span key={`${event.id}-${student?.id ?? index}`} title={name || "Свободное место"} className={`grid h-6 w-6 place-items-center rounded-full border text-[10px] font-black ${student ? attendancePillClass(String(current?.status ?? "")) : "border-blue-100 bg-white text-slate-400"}`}>
               {student ? initials(name) : index + 1}
             </span>
           );})}
         </div>
-        <div className="mt-4 flex items-end justify-between gap-3">
-          <p className="text-lg font-black text-slate-500">{occupied}/8<br />мест</p>
-          <span className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">Слоты</span>
-          <span className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-black text-white">Отчет</span>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className="text-xs font-black text-slate-500">{occupied}/8 мест</p>
+          <span className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-black text-white transition group-open:bg-slate-900">Открыть</span>
         </div>
       </summary>
 
@@ -1332,9 +1332,9 @@ function ScheduleEventCard({
 
 function AddLessonCell({ date, time, groupOptions, mentorOptions, roomOptions }: { date: string; time: string; groupOptions: string[]; mentorOptions: string[]; roomOptions: string[] }) {
   return (
-    <details className="group rounded-2xl p-2">
-      <summary className="mx-auto flex min-h-12 w-full cursor-pointer list-none items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 px-4 py-2 text-center text-xl font-black text-[#0b2c61] transition hover:border-blue-400 hover:bg-blue-50">
-        + слот
+    <details className="group rounded-2xl">
+      <summary className="mx-auto flex min-h-20 w-full cursor-pointer list-none items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 px-4 py-2 text-center text-sm font-black text-blue-700 transition hover:border-blue-400 hover:bg-blue-50 group-open:border-blue-400 group-open:bg-white">
+        + добавить слот
       </summary>
       <form action={saveRoboticsRecord} className="mt-3 grid gap-2 rounded-2xl border border-blue-100 bg-white p-3 shadow-lg shadow-blue-100/60">
         <input type="hidden" name="module" value="schedule" />
