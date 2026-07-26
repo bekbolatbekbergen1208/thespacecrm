@@ -96,13 +96,13 @@ export default async function MentorWorkspacePage({
       </div>
 
       <section className="print-area mb-5 rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-glow">
-        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="no-print mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Журнал ментора</p>
             <h2 className="mt-2 text-3xl font-black text-white">Печатный журнал посещаемости</h2>
             <p className="mt-2 text-sm text-slate-400">{String(company?.name ?? "CRM.Space")} · {selectedPrintMentor || mentorName} · {periodFrom} - {periodTo}</p>
           </div>
-          <div className="no-print flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link href="/dashboard/education/groups" className="premium-button h-11 border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200 hover:bg-white/[0.08]">
               Группы
             </Link>
@@ -157,7 +157,7 @@ export default async function MentorWorkspacePage({
           </div>
         </div>
 
-        <div className="grid gap-5">
+        <div className="mentor-print-pages grid gap-5">
           {!printableGroups.length && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-400">Нет групп для печати.</p>}
           {printableGroups.map(({ group, students: groupRows }) => {
             const printedGroupRows = groupRows.slice(0, MAX_PRINT_STUDENTS_PER_GROUP);
