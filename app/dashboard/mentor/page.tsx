@@ -71,14 +71,16 @@ export default async function MentorWorkspacePage({
     <>
       <PrintButton label="Печать журнала" floating />
 
-      <PageHeader
-        title="Журнал посещаемости"
-        description="Отдельная страница для печати A4-журналов по группам, а ниже кабинет ментора для уроков."
-      />
-      {params.error && <p className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{params.error}</p>}
-      {params.saved && <p className="mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-3 text-sm font-semibold text-emerald-100">Урок сохранён: тема, посещаемость и оценки обновлены.</p>}
+      <div className="no-print">
+        <PageHeader
+          title="Журнал посещаемости"
+          description="Отдельная страница для печати A4-журналов по группам, а ниже кабинет ментора для уроков."
+        />
+      </div>
+      {params.error && <p className="no-print mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-semibold text-red-100">{params.error}</p>}
+      {params.saved && <p className="no-print mb-4 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-3 text-sm font-semibold text-emerald-100">Урок сохранён: тема, посещаемость и оценки обновлены.</p>}
 
-      <div className="mb-5 grid gap-4 md:grid-cols-3">
+      <div className="no-print mb-5 grid gap-4 md:grid-cols-3">
         <Card>
           <p className="text-sm font-semibold text-slate-400">Ментор</p>
           <p className="mt-2 text-2xl font-black text-white">{mentorName}</p>
@@ -136,7 +138,7 @@ export default async function MentorWorkspacePage({
           </button>
         </form>
 
-        <div className="mentor-print-cover mb-5 grid gap-3 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4 md:grid-cols-4">
+        <div className="mentor-print-cover no-print mb-5 grid gap-3 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.06] p-4 md:grid-cols-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Компания</p>
             <p className="mt-1 font-black text-white">{String(company?.name ?? "CRM.Space")}</p>
@@ -185,7 +187,7 @@ export default async function MentorWorkspacePage({
                   <span className="rounded-2xl border border-white/10 bg-slate-950/30 px-3 py-2">Б / НБ / О / У</span>
                 </div>
                 {hiddenStudentsCount > 0 && (
-                  <p className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-100">
+                  <p className="no-print mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-100">
                     В печать попали первые {MAX_PRINT_STUDENTS_PER_GROUP} учеников. Осталось вне листа: {hiddenStudentsCount}.
                   </p>
                 )}
@@ -250,7 +252,7 @@ export default async function MentorWorkspacePage({
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
+      <div className="no-print grid gap-5 xl:grid-cols-[360px_1fr]">
         <section className="space-y-3">
           {!visibleGroups.length && (
             <EmptyState text="Пока нет групп, назначенных этому ментору. Founder/Admin должен указать имя ментора в группе." />

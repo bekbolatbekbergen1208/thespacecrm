@@ -391,15 +391,17 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   .mentor-print-group {
     break-after: page;
     page-break-after: always;
-    break-inside: auto;
-    page-break-inside: auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    height: 186mm !important;
     min-height: 186mm !important;
+    max-height: 186mm !important;
     border: 1.5px solid #0f172a !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     box-shadow: none !important;
     margin-bottom: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .mentor-print-group:last-child {
@@ -410,22 +412,23 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   .mentor-print-head {
     background: #f8fafc !important;
     border-bottom: 1.5px solid #0f172a !important;
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
   }
 
   .mentor-print-table {
     width: 100% !important;
     color: #0f172a !important;
-    font-size: 7.5px !important;
+    font-size: 6.4px !important;
     table-layout: fixed !important;
+    line-height: 1.05 !important;
   }
 
   .mentor-print-table th,
   .mentor-print-table td {
     border: 1px solid #94a3b8 !important;
     color: #0f172a !important;
-    height: 7mm !important;
-    padding: 2px 3px !important;
+    height: 6.4mm !important;
+    padding: 1px 2px !important;
     vertical-align: middle !important;
     background: #ffffff !important;
   }
@@ -435,18 +438,19 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .mentor-print-day {
-    width: 18px !important;
-    min-width: 18px !important;
-    max-width: 18px !important;
-    padding-left: 2px !important;
-    padding-right: 2px !important;
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
     text-align: center !important;
   }
 
   .mentor-print-signature {
     background: #f8fafc !important;
     border-top: 1.5px solid #0f172a !important;
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
+    font-size: 8px !important;
   }
 
   .print-area h2,
