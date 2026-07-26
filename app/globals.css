@@ -392,14 +392,33 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
     display: none !important;
   }
 
-  body:has(.mentor-print-group) {
+  body:has(.mentor-print-group),
+  body:has(.mentor-print-group) html {
     background: #ffffff !important;
   }
 
-  body:has(.mentor-print-group) main {
+  body:has(.mentor-print-group) main,
+  body:has(.mentor-print-group) main > div,
+  body:has(.mentor-print-group) main > div > section,
+  body:has(.mentor-print-group) .page-enter {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
     background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+  }
+
+  body:has(.mentor-print-group) main > div > aside,
+  body:has(.mentor-print-group) main > div > section > header,
+  body:has(.mentor-print-group) main > .pointer-events-none {
+    display: none !important;
+  }
+
+  body:has(.mentor-print-group) .print-area {
+    display: block !important;
   }
 
   body:has(.mentor-print-group) .print-area > :not(.mentor-print-title-page):not(.mentor-print-pages) {
@@ -427,6 +446,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
     margin: 0 !important;
     padding: 14mm !important;
     overflow: hidden !important;
+    box-shadow: none !important;
   }
 
   .mentor-print-title-top {
