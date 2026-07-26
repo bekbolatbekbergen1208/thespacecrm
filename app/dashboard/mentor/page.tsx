@@ -46,6 +46,7 @@ export default async function MentorWorkspacePage({
     new Set(allGroups.map((group) => String(group.mentor_name ?? "").trim()).filter(Boolean)),
   ).sort((a, b) => a.localeCompare(b, "ru"));
   const selectedPrintMentor = canSeeAllGroups && params.mentor ? params.mentor : "";
+  const coverMentorNames = selectedPrintMentor ? [selectedPrintMentor] : canSeeAllGroups ? allMentorNames : [mentorName];
   const visibleGroups = canSeeAllGroups
     ? allGroups
     : allGroups.filter((group) => aliases.some((alias) => String(group.mentor_name ?? "").toLowerCase().includes(alias)));
@@ -154,6 +155,40 @@ export default async function MentorWorkspacePage({
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Дней / групп</p>
             <p className="mt-1 font-black text-white">{printDays.length} / {printableGroups.length}</p>
+          </div>
+        </div>
+
+        <div className="mentor-print-title-page print-only">
+          <div className="mentor-print-title-top">
+            <p>CRM.Space</p>
+            <p>{periodFrom} - {periodTo}</p>
+          </div>
+          <div className="mentor-print-title-center">
+            <p className="mentor-print-title-kicker">Журнал посещаемости</p>
+            <h1>{String(company?.name ?? "CRM.Space")}</h1>
+            <p className="mentor-print-title-subtitle">Печатный журнал учебных групп за выбранный период</p>
+          </div>
+          <div className="mentor-print-title-info">
+            <div>
+              <p className="mentor-print-title-label">Компания</p>
+              <p className="mentor-print-title-value">{String(company?.name ?? "CRM.Space")}</p>
+            </div>
+            <div>
+              <p className="mentor-print-title-label">Период журнала</p>
+              <p className="mentor-print-title-value">{periodFrom} - {periodTo}</p>
+            </div>
+            <div>
+              <p className="mentor-print-title-label">Количество групп</p>
+              <p className="mentor-print-title-value">{printableGroups.length}</p>
+            </div>
+            <div>
+              <p className="mentor-print-title-label">Менторы</p>
+              <p className="mentor-print-title-value">{coverMentorNames.length ? coverMentorNames.join(", ") : "Не указаны"}</p>
+            </div>
+          </div>
+          <div className="mentor-print-title-signatures">
+            <p>Подпись учителя: <span /></p>
+            <p>Подпись директора: <span /></p>
           </div>
         </div>
 
