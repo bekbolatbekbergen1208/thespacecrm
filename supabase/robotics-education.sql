@@ -97,16 +97,11 @@ create table if not exists public.bakery_shops (
   company_id uuid not null references public.companies(id) on delete cascade,
   name text not null,
   address text,
-  latitude numeric(10,7),
-  longitude numeric(10,7),
   phone text,
   driver_name text,
   notes text,
   created_at timestamptz not null default now()
 );
-
-alter table public.bakery_shops add column if not exists latitude numeric(10,7);
-alter table public.bakery_shops add column if not exists longitude numeric(10,7);
 
 create table if not exists public.bakery_stock (
   id uuid primary key default gen_random_uuid(),
@@ -162,173 +157,11 @@ create table if not exists public.bakery_expenses (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.bakery_products (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  name text not null,
-  category text,
-  photo_url text,
-  photo_keywords text,
-  purchase_price numeric(12,2) not null default 0,
-  sale_price numeric(12,2) not null default 0,
-  initial_quantity integer not null default 0,
-  status text not null default 'active',
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.bakery_product_sales (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  product_id uuid not null references public.bakery_products(id) on delete cascade,
-  sale_date date not null default current_date,
-  quantity integer not null default 1,
-  payment_method text not null default 'cash',
-  total_amount numeric(12,2) not null default 0,
-  profit_amount numeric(12,2) not null default 0,
-  customer_name text,
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.bakery_vehicles (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  name text not null,
-  plate_number text,
-  driver_name text,
-  phone text,
-  capacity text,
-  status text not null default 'active',
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.bakery_clients (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  name text not null,
-  phone text,
-  address text not null,
-  latitude numeric(10,7),
-  longitude numeric(10,7),
-  loyalty_info text,
-  notes text,
-  status text not null default 'active',
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.bakery_delivery_routes (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  route_date date not null default current_date,
-  route_name text not null,
-  vehicle_id uuid references public.bakery_vehicles(id) on delete set null,
-  driver_name text,
-  shop_ids text not null default '',
-  client_ids text not null default '',
-  status text not null default 'planned',
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.bakery_delivery_routes add column if not exists client_ids text not null default '';
-
-create table if not exists public.bakery_tasks (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  title text not null,
-  department text not null default 'base',
-  priority text not null default 'medium',
-  status text not null default 'new',
-  assignee text,
-  due_date date,
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.bakery_tasks add column if not exists department text not null default 'base';
-alter table public.bakery_tasks add column if not exists priority text not null default 'medium';
-alter table public.bakery_tasks add column if not exists status text not null default 'new';
-alter table public.bakery_tasks add column if not exists assignee text;
-alter table public.bakery_tasks add column if not exists due_date date;
-alter table public.bakery_tasks add column if not exists notes text;
-
-create index if not exists bakery_tasks_company_department_status_idx
-on public.bakery_tasks (company_id, department, status, created_at desc);
-
 do $$
 declare
   tbl text;
 begin
-  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses','bakery_products','bakery_product_sales','bakery_vehicles','bakery_clients','bakery_delivery_routes','bakery_tasks']
-  loop
-    execute format('alter table public.%I enable row level security', tbl);
-    execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);
-    execute format('drop policy if exists "Managers can insert %1$s" on public.%1$I', tbl);
-    execute format('drop policy if exists "Managers can update %1$s" on public.%1$I', tbl);
-    execute format('drop policy if exists "Managers can delete %1$s" on public.%1$I', tbl);
-    execute format('create policy "Members can read %1$s" on public.%1$I for select using (public.is_company_member(company_id))', tbl);
-    execute format('create policy "Managers can insert %1$s" on public.%1$I for insert with check (public.has_company_role(company_id, array[''founder'',''admin'',''manager'']::public.member_role[]))', tbl);
-    execute format('create policy "Managers can update %1$s" on public.%1$I for update using (public.has_company_role(company_id, array[''founder'',''admin'',''manager'']::public.member_role[]))', tbl);
-    execute format('create policy "Managers can delete %1$s" on public.%1$I for delete using (public.has_company_role(company_id, array[''founder'',''admin'',''manager'']::public.member_role[]))', tbl);
-  end loop;
-end $$;
-
-create table if not exists public.retail_products (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  name text not null,
-  category text,
-  address text,
-  photo_url text,
-  photo_keywords text,
-  purchase_price numeric(12,2) not null default 0,
-  sale_price numeric(12,2) not null default 0,
-  initial_quantity integer not null default 0,
-  status text not null default 'active',
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.retail_products add column if not exists address text;
-
-create table if not exists public.retail_product_sales (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  product_id uuid not null references public.retail_products(id) on delete cascade,
-  sale_date date not null default current_date,
-  quantity integer not null default 1,
-  payment_method text not null default 'cash',
-  total_amount numeric(12,2) not null default 0,
-  profit_amount numeric(12,2) not null default 0,
-  customer_name text,
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.retail_debts (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  product_id uuid references public.retail_products(id) on delete set null,
-  customer_name text not null,
-  phone text not null,
-  amount numeric(12,2) not null default 0,
-  due_date date not null default current_date,
-  status text not null default 'open',
-  notes text,
-  last_reminded_at timestamptz,
-  paid_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-alter table public.retail_debts add column if not exists product_id uuid references public.retail_products(id) on delete set null;
-
-do $$
-declare
-  tbl text;
-begin
-  foreach tbl in array array['retail_products','retail_product_sales','retail_debts']
+  foreach tbl in array array['bakery_shops','bakery_stock','bakery_sales','bakery_suppliers','bakery_expenses']
   loop
     execute format('alter table public.%I enable row level security', tbl);
     execute format('drop policy if exists "Members can read %1$s" on public.%1$I', tbl);
@@ -345,12 +178,6 @@ end $$;
 drop policy if exists "Members can insert bakery_sales" on public.bakery_sales;
 create policy "Members can insert bakery_sales"
 on public.bakery_sales
-for insert
-with check (public.is_company_member(company_id));
-
-drop policy if exists "Members can insert bakery_product_sales" on public.bakery_product_sales;
-create policy "Members can insert bakery_product_sales"
-on public.bakery_product_sales
 for insert
 with check (public.is_company_member(company_id));
 
@@ -560,7 +387,7 @@ create table if not exists public.robotics_grades (
   student_name text not null,
   group_name text,
   mentor_name text,
-  score numeric(5,2) not null default 0,
+  score numeric(4,2) not null default 0,
   grade_date date not null default current_date,
   comment text,
   created_at timestamptz not null default now()
@@ -570,69 +397,10 @@ alter table public.robotics_grades add column if not exists company_id uuid refe
 alter table public.robotics_grades add column if not exists student_name text;
 alter table public.robotics_grades add column if not exists group_name text;
 alter table public.robotics_grades add column if not exists mentor_name text;
-alter table public.robotics_grades add column if not exists score numeric(5,2) not null default 0;
-alter table public.robotics_grades alter column score type numeric(5,2) using score::numeric(5,2);
+alter table public.robotics_grades add column if not exists score numeric(4,2) not null default 0;
 alter table public.robotics_grades add column if not exists grade_date date not null default current_date;
 alter table public.robotics_grades add column if not exists comment text;
 alter table public.robotics_grades add column if not exists created_at timestamptz not null default now();
-
-create table if not exists public.robotics_feedback (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  student_name text not null,
-  group_name text,
-  mentor_name text,
-  skill text not null,
-  score numeric(5,2) not null default 0,
-  feedback_date date not null default current_date,
-  status text not null default 'новый',
-  note text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.robotics_learning (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  lesson_number integer not null default 1,
-  title text not null,
-  concept text not null,
-  course text not null default 'SPIKE Prime',
-  level text not null default 'beginner',
-  explanation text,
-  practice text,
-  checklist text,
-  status text not null default 'planned',
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.robotics_methods (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  title text not null,
-  course text not null default 'SPIKE Prime',
-  lesson_number integer,
-  level text,
-  goal text,
-  materials text,
-  instructions text,
-  checklist text,
-  status text not null default 'draft',
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.robotics_team (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id) on delete cascade,
-  name text not null,
-  role text not null default 'mentor',
-  phone text,
-  email text,
-  groups text,
-  permissions text,
-  status text not null default 'active',
-  notes text,
-  created_at timestamptz not null default now()
-);
 
 do $$
 declare
@@ -641,8 +409,7 @@ begin
   foreach tbl in array array[
     'robotics_students','robotics_payments','robotics_attendance','robotics_lessons',
     'robotics_trial_lessons','robotics_subscriptions','robotics_groups','robotics_mentors',
-    'robotics_families','robotics_feedback','robotics_learning','robotics_tasks',
-    'robotics_inventory','robotics_methods','robotics_salaries','robotics_team','robotics_grades'
+    'robotics_families','robotics_tasks','robotics_inventory','robotics_salaries','robotics_grades'
   ]
   loop
     execute format('alter table public.%I enable row level security', tbl);

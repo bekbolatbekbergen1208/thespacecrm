@@ -9,6 +9,8 @@ export function RoboticsExportButtons({
   title: string;
   rows: Record<string, unknown>[];
 }) {
+  const safeFileName = title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").slice(0, 80) || "export";
+
   async function exportPdf() {
     const [{ default: jsPDF }, QRCode] = await Promise.all([
       import("jspdf"),
@@ -22,24 +24,35 @@ export function RoboticsExportButtons({
     rows.slice(0, 24).forEach((row, index) => {
       doc.text(JSON.stringify(row).slice(0, 100), 14, 42 + index * 8);
     });
-    doc.save(`${title}.pdf`);
+    doc.save(`${safeFileName}.pdf`);
   }
 
   async function exportExcel() {
     const XLSX = await import("xlsx");
-    const sheet = XLSX.utils.json_to_sheet(rows);
+    const safeRows = rows.map((row) => Object.fromEntries(
+      Object.entries(row).map(([key, entry]) => [
+        key,
+        typeof entry === "string" && /^[\s\u0000-\u001f]*[=+\-@]/.test(entry) ? `'${entry}` : entry,
+      ]),
+    ));
+    const sheet = XLSX.utils.json_to_sheet(safeRows);
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, title.slice(0, 28));
-    XLSX.writeFile(book, `${title}.xlsx`);
+    XLSX.writeFile(book, `${safeFileName}.xlsx`);
   }
 
   async function printQr() {
     const QRCode = await import("qrcode");
     const qr = await QRCode.toDataURL(window.location.href);
-    const image = new Image();
-    image.src = qr;
     const popup = window.open("", "_blank");
-    popup?.document.write(`<img src="${qr}" style="width:220px;height:220px" /><p>${title}</p>`);
+    if (!popup) return;
+    const image = popup.document.createElement("img");
+    image.src = qr;
+    image.width = 220;
+    image.height = 220;
+    const caption = popup.document.createElement("p");
+    caption.textContent = title;
+    popup.document.body.append(image, caption);
   }
 
   return (

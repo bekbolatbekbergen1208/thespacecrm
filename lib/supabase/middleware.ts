@@ -5,6 +5,10 @@ import { getSupabaseConfig, hasSupabaseConfig } from "./config";
 const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
 const AUTH_PAGES = ["/login", "/signup", "/auth"];
 
+function matchesRoutePrefix(pathname: string, prefix: string) {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
 export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-current-path", request.nextUrl.pathname);
@@ -31,8 +35,8 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
-  const isAuthPage = AUTH_PAGES.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
+  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => matchesRoutePrefix(request.nextUrl.pathname, prefix));
+  const isAuthPage = AUTH_PAGES.some((prefix) => matchesRoutePrefix(request.nextUrl.pathname, prefix));
 
   if (!user && isProtectedRoute) {
     const loginUrl = new URL("/login", request.url);

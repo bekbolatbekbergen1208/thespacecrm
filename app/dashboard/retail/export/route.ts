@@ -8,7 +8,10 @@ type RetailRow = {
 };
 
 function csvCell(value: unknown) {
-  return `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
+  let text = String(value ?? "");
+  // Spreadsheet applications may execute cells beginning with formula markers.
+  if (/^[\s\u0000-\u001f]*[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll("\"", "\"\"")}"`;
 }
 
 function buildCsv(sales: RetailRow[], products: RetailRow[]) {
@@ -62,6 +65,9 @@ export async function GET(request: NextRequest) {
 
   const date = request.nextUrl.searchParams.get("date");
   const all = request.nextUrl.searchParams.get("all") === "1";
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  }
   const companyId = membership.company_id;
 
   const [{ data: products, error: productsError }, salesResult] = await Promise.all([

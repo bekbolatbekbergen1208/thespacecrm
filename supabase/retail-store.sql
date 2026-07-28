@@ -94,7 +94,7 @@ with check (public.is_company_member(company_id));
 
 create policy "Managers can update retail_product_sales"
 on public.retail_product_sales
-for update
+for updatent
 using (public.has_company_role(company_id, array['founder','admin','manager']::public.member_role[]));
 
 create policy "Managers can delete retail_product_sales"
@@ -132,12 +132,6 @@ on public.retail_products (company_id, status, created_at desc);
 
 create index if not exists retail_products_company_name_idx
 on public.retail_products (company_id, name);
-
-create index if not exists retail_products_company_category_idx
-on public.retail_products (company_id, category);
-
-create index if not exists retail_products_company_address_idx
-on public.retail_products (company_id, address);
 
 create index if not exists retail_product_sales_company_date_idx
 on public.retail_product_sales (company_id, sale_date desc);
