@@ -42,6 +42,11 @@ export async function RoboticsSimpleModulePage({
   const rows = (data ?? []) as RoboticsRow[];
   const directories = await loadSimpleDirectories({ supabase, companyId, moduleKey, fields: crmModule.fields, rows });
   const formFields = withDirectoryOptions(crmModule.fields, directories);
+  const configuredStatuses = crmModule.fields.find((field) => field.name === "status")?.options ?? [];
+  const statusOptions = unique([
+    ...configuredStatuses,
+    ...rows.map((row) => String(row.status ?? "")).filter(Boolean),
+  ]);
   const filtered = rows.filter((row) => {
     const text = Object.values(row).join(" ").toLowerCase();
     const q = params.q?.toLowerCase() ?? "";
@@ -93,7 +98,12 @@ export async function RoboticsSimpleModulePage({
               <input name="q" placeholder={t.search} defaultValue={params.q ?? ""} className="premium-input h-10 w-full pl-9 pr-3 text-sm text-white outline-none" />
             </label>
             <input name="group" placeholder={t.group} defaultValue={params.group ?? ""} className="premium-input h-10 w-full px-3 text-sm text-white outline-none" />
-            <input name="status" placeholder={t.status} defaultValue={params.status ?? ""} className="premium-input h-10 w-full px-3 text-sm text-white outline-none" />
+            <select name="status" defaultValue={params.status ?? ""} aria-label={t.status} className="premium-input h-10 w-full px-3 text-sm text-white outline-none">
+              <option value="">{locale === "kk" ? "Барлық статустар" : locale === "en" ? "All statuses" : "Все статусы"}</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>{translateLiteral(locale, status)}</option>
+              ))}
+            </select>
             <SmallButton><Filter className="h-3.5 w-3.5" /> {t.filter}</SmallButton>
           </form>
         </div>
