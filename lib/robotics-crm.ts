@@ -63,7 +63,6 @@ export const roboticsPrimaryNav = [
   ["Пробные уроки", "/dashboard/education/trial-lessons"],
   ["Оплаты", "/dashboard/education/payments"],
   ["Договоры", "/dashboard/education/contract"],
-  ["Мои группы", "/dashboard/mentor"],
   ["Журнал посещаемости", "/dashboard/education/mentor-journal"],
   ["Управление сотрудниками", "/dashboard/employees"],
   ["Отчёты", "/dashboard/education/reports"],

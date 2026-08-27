@@ -13,6 +13,7 @@ import {
   saveStudentGrade,
 } from "@/app/actions";
 import { Card, EmptyState, PageHeader } from "@/components/app/app-shell";
+import { DeleteGroupForm } from "@/components/app/delete-group-form";
 import { PaymentReminderLink } from "@/components/app/payment-reminder-link";
 import { RoboticsExportButtons } from "@/components/app/robotics-export-buttons";
 import { RoboticsRecordForm } from "@/components/app/robotics-record-form";
@@ -699,6 +700,12 @@ function GroupsPanel({
               </div>
               </summary>
 
+              {canManageEducation && (
+                <div className="mt-4">
+                  <DeleteGroupForm groupId={group.id} groupName={groupName} />
+                </div>
+              )}
+
               <form action={saveRoboticsRecord} className="mt-4 grid gap-2 rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:grid-cols-[1fr_auto] md:items-end">
                 <input type="hidden" name="module" value="groups" />
                 <input type="hidden" name="id" value={group.id} />
@@ -752,12 +759,6 @@ function GroupsPanel({
                     record={group}
                     submitLabel="Сохранить группу"
                   />
-                  <form action={deleteRoboticsRecord} className="mt-4 border-t border-white/10 pt-4">
-                    <input type="hidden" name="module" value="groups" />
-                    <input type="hidden" name="id" value={group.id} />
-                    <SmallButton danger>Удалить группу</SmallButton>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">Ученики из этой группы останутся в базе, но будут сняты с группы.</p>
-                  </form>
                 </div>
               </details>
               )}
