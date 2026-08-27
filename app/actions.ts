@@ -2167,6 +2167,15 @@ export async function assignStudentToGroup(formData: FormData) {
   const studentId = z.string().uuid().parse(value(formData, "studentId"));
   const groupName = z.string().min(1).parse(value(formData, "groupName"));
   const mentorName = value(formData, "mentorName") || null;
+  const { data: student } = await supabase
+    .from("robotics_students")
+    .select("group_name")
+    .eq("id", studentId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (student?.group_name) {
+    redirect(`/dashboard/education/groups?error=${encodeURIComponent("Ученик уже состоит в другой группе")}`);
+  }
   const { error } = await supabase
     .from("robotics_students")
     .update({ group_name: groupName, mentor_name: mentorName })
@@ -2187,11 +2196,24 @@ export async function assignStudentsToGroup(formData: FormData) {
     redirect(`/dashboard/education/groups?error=${encodeURIComponent("Выберите хотя бы одного ученика")}`);
   }
 
+  const { data: selectedStudents, error: selectedStudentsError } = await supabase
+    .from("robotics_students")
+    .select("id, group_name")
+    .eq("company_id", companyId)
+    .in("id", studentIds);
+  if (selectedStudentsError) redirect(`/dashboard/education/groups?error=${encodeURIComponent(selectedStudentsError.message)}`);
+  const availableStudentIds = (selectedStudents ?? [])
+    .filter((student) => !student.group_name)
+    .map((student) => student.id);
+  if (!availableStudentIds.length) {
+    redirect(`/dashboard/education/groups?error=${encodeURIComponent("Выбранные ученики уже состоят в других группах")}`);
+  }
+
   const { error } = await supabase
     .from("robotics_students")
     .update({ group_name: groupName, mentor_name: mentorName })
     .eq("company_id", companyId)
-    .in("id", studentIds);
+    .in("id", availableStudentIds);
 
   if (error) redirect(`/dashboard/education/groups?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/education/groups");

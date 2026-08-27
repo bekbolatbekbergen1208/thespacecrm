@@ -671,8 +671,7 @@ function GroupsPanel({
           const groupAttendance = attendance.filter((item) => item.group_name === groupName);
           const groupTodayAttendance = groupAttendance.filter((item) => item.lesson_date === today);
           const groupPresentToday = groupTodayAttendance.filter((item) => item.status === "присутствовал" || item.status === "опоздал").length;
-          const availableStudents = students.filter((student) => student.group_name !== groupName);
-          const unassigned = students.filter((student) => !student.group_name);
+          const availableStudents = students.filter((student) => !student.group_name);
           const attendanceSlots = groupAttendanceSlots(groupLessons, groupAttendance, today);
 
           return (
@@ -842,16 +841,15 @@ function GroupsPanel({
                       <input type="hidden" name="groupName" value={groupName} />
                       <input type="hidden" name="mentorName" value={String(group.mentor_name ?? "")} />
                       <div className="max-h-72 space-y-2 overflow-auto pr-1">
-                        {!availableStudents.length && <p className="rounded-xl border border-white/10 bg-slate-950/35 px-3 py-3 text-sm text-slate-400">Все ученики уже находятся в этой группе.</p>}
+                        {!availableStudents.length && <p className="rounded-xl border border-white/10 bg-slate-950/35 px-3 py-3 text-sm text-slate-400">Нет учеников без группы.</p>}
                         {availableStudents.map((student) => {
-                          const currentGroup = String(student.group_name ?? "");
                           return (
                             <label key={student.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-slate-950/35 px-3 py-3 text-sm transition hover:border-cyan-300/25 hover:bg-cyan-300/10">
                               <input name="studentId" type="checkbox" value={student.id} className="h-4 w-4 accent-cyan-300" />
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate font-black text-white">{fullName(student)}</span>
                                 <span className="mt-1 block truncate text-xs text-slate-500">
-                                  {currentGroup ? `Сейчас: ${currentGroup}` : "Без группы"} • {String(student.parent_phone ?? "Телефон не указан")}
+                                  Без группы • {String(student.parent_phone ?? "Телефон не указан")}
                                 </span>
                               </span>
                             </label>
@@ -861,13 +859,13 @@ function GroupsPanel({
                       <SmallButton>Добавить выбранных</SmallButton>
                     </form>
                   </details>
-                  {!!unassigned.length && (
+                  {!!availableStudents.length && (
                     <form action={assignStudentToGroup} className="mt-3 grid gap-2 border-t border-white/10 pt-3">
                       <input type="hidden" name="groupName" value={groupName} />
                       <input type="hidden" name="mentorName" value={String(group.mentor_name ?? "")} />
                       <select name="studentId" className="premium-input h-10 px-3 text-sm text-white outline-none">
                         <option value="">Быстро добавить одного ученика</option>
-                        {unassigned.map((student) => (
+                        {availableStudents.map((student) => (
                           <option key={student.id} value={student.id}>{fullName(student)}</option>
                         ))}
                       </select>
