@@ -47,15 +47,21 @@ export async function RoboticsSimpleModulePage({
     ...configuredStatuses,
     ...rows.map((row) => String(row.status ?? "")).filter(Boolean),
   ]);
+  const groupOptions = unique([
+    ...directories.groups.map((group) => String(group.name ?? "")),
+    ...rows.map((row) => String(row.group_name ?? "")),
+  ]);
   const filtered = rows.filter((row) => {
     const text = Object.values(row).join(" ").toLowerCase();
     const q = params.q?.toLowerCase() ?? "";
     const status = params.status?.toLowerCase() ?? "";
     const group = params.group?.toLowerCase() ?? "";
     const mentor = params.mentor?.toLowerCase() ?? "";
+    const rowGroup = String(row.group_name ?? row.name ?? "").trim().toLowerCase();
+    const matchesGroup = group === "__unassigned__" ? !rowGroup : !group || rowGroup === group;
     return (!q || text.includes(q))
       && (!status || String(row.status ?? "").toLowerCase() === status)
-      && (!group || String(row.group_name ?? row.name ?? "").toLowerCase() === group)
+      && matchesGroup
       && (!mentor || String(row.mentor_name ?? "").toLowerCase().includes(mentor));
   }).sort((a, b) => {
     if (!params.sort) return 0;
@@ -97,7 +103,17 @@ export async function RoboticsSimpleModulePage({
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input name="q" placeholder={t.search} defaultValue={params.q ?? ""} className="premium-input h-10 w-full pl-9 pr-3 text-sm text-white outline-none" />
             </label>
-            <input name="group" placeholder={t.group} defaultValue={params.group ?? ""} className="premium-input h-10 w-full px-3 text-sm text-white outline-none" />
+            {moduleKey === "students" ? (
+              <select name="group" defaultValue={params.group ?? ""} aria-label={t.group} className="premium-input h-10 w-full px-3 text-sm text-white outline-none">
+                <option value="">{locale === "kk" ? "Барлық топтар" : locale === "en" ? "All groups" : "Все группы"}</option>
+                <option value="__unassigned__">{locale === "kk" ? "Топсыз" : locale === "en" ? "Without a group" : "Без группы"}</option>
+                {groupOptions.map((group) => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
+              </select>
+            ) : (
+              <input name="group" placeholder={t.group} defaultValue={params.group ?? ""} className="premium-input h-10 w-full px-3 text-sm text-white outline-none" />
+            )}
             <select name="status" defaultValue={params.status ?? ""} aria-label={t.status} className="premium-input h-10 w-full px-3 text-sm text-white outline-none">
               <option value="">{locale === "kk" ? "Барлық статустар" : locale === "en" ? "All statuses" : "Все статусы"}</option>
               {statusOptions.map((status) => (
