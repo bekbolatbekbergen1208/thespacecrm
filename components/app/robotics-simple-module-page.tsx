@@ -106,7 +106,7 @@ export async function RoboticsSimpleModulePage({
             {moduleKey === "students" ? (
               <select name="group" defaultValue={params.group ?? ""} aria-label={t.group} className="premium-input h-10 w-full px-3 text-sm text-white outline-none">
                 <option value="">{locale === "kk" ? "Барлық топтар" : locale === "en" ? "All groups" : "Все группы"}</option>
-                <option value="__unassigned__">{locale === "kk" ? "Топсыз" : locale === "en" ? "Without a group" : "Без группы"}</option>
+                <option value="__unassigned__">{locale === "kk" ? "Топсыз оқушылар" : locale === "en" ? "Students without a group" : "Ученики без группы"}</option>
                 {groupOptions.map((group) => (
                   <option key={group} value={group}>{group}</option>
                 ))}
