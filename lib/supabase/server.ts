@@ -1,3 +1,4 @@
+import { isLocalPreview, createLocalPreviewClient } from "@/lib/local-preview";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseConfig, hasSupabaseConfig } from "./config";
@@ -15,6 +16,7 @@ export function hasSupabaseEnv() {
 }
 
 export async function createClient(options?: CreateClientOptions) {
+  if (isLocalPreview()) return createLocalPreviewClient();
   const cookieStore = await cookies();
   const { url, anonKey } = getSupabaseConfig();
   const rememberSession =

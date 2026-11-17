@@ -1,0 +1,268 @@
+/* S7 midnight glass. Opaque fallbacks keep every surface legible without blur. */
+@media screen {
+  .center-app.crm-workspace,
+  .center-app.login-enterprise {
+    --ink: #e6efff;
+    --muted: #a5b7d5;
+    --line: #aacaff24;
+    --accent: #72adff;
+    --green: #75e2c1;
+    color-scheme: dark;
+    color: var(--ink);
+    background:
+      radial-gradient(ellipse at 12% 0%, #17407980, transparent 48%),
+      radial-gradient(ellipse at 95% 35%, #253d8270, transparent 48%),
+      #080f21;
+    background-attachment: fixed;
+  }
+  .crm-workspace .center-sidebar {
+    background: #0b1730e8;
+    border-right: 1px solid var(--line);
+    box-shadow: 12px 0 48px #02081730;
+  }
+  .crm-workspace .center-topbar {
+    background: #0d1c36c9;
+    border-color: var(--line);
+  }
+  .crm-workspace .center-sidebar,
+  .crm-workspace .center-topbar,
+  .crm-workspace .panel,
+  .crm-workspace .stat-card,
+  .login-enterprise .login-form-side {
+    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(22px);
+  }
+  .crm-workspace .panel,
+  .crm-workspace .stat-card,
+  .login-enterprise .login-form-side {
+    background: linear-gradient(135deg, #243d608c, #11213bba);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: inset 0 1px 0 #ffffff0b, 0 12px 36px #02081725;
+  }
+  .crm-workspace .center-sidebar nav a {
+    position: relative;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: #afc2e0;
+    transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+  .crm-workspace .center-sidebar nav a svg { color: #8faedb; }
+  .crm-workspace .center-sidebar nav a.active {
+    background: linear-gradient(110deg, #397ce94d, #467adb26);
+    border-color: #78afff55;
+    box-shadow: inset 0 1px 0 #ffffff14, 0 5px 20px #02081725;
+    color: #f4f8ff;
+  }
+  .crm-workspace .center-sidebar nav a.active::before {
+    content: "";
+    position: absolute;
+    width: 3px;
+    height: 19px;
+    left: -1px;
+    border-radius: 4px;
+    background: #8ec8ff;
+    box-shadow: 0 0 12px #68aaff90;
+  }
+  .crm-workspace .center-sidebar nav a.active svg { color: #9fd1ff; }
+  .crm-workspace .center-label,
+  .crm-workspace .sidebar-bottom > p,
+  .crm-workspace .account small { color: #91a7ca; }
+  .crm-workspace .account { border-color: var(--line); }
+  .crm-workspace .avatar,
+  .crm-workspace .avatar.mint,
+  .crm-workspace .account .avatar,
+  .crm-workspace .group-icon,
+  .crm-workspace .file-icon,
+  .crm-workspace .report-student-icon {
+    background: linear-gradient(135deg, #578fff30, #538fe315);
+    color: #a9cfff;
+    border: 1px solid #8cb7ff2b;
+    border-radius: 11px;
+  }
+  .crm-workspace h1,
+  .crm-workspace h2,
+  .crm-workspace h3,
+  .crm-workspace td strong,
+  .crm-workspace .stat-card strong,
+  .crm-workspace .breadcrumb strong,
+  .crm-workspace .mini-task strong,
+  .crm-workspace .attendance-name strong,
+  .crm-workspace .task-info h3,
+  .crm-workspace .modal-heading h2,
+  .crm-workspace .contract-student-summary strong,
+  .crm-workspace .report-details strong { color: #e5eeff; }
+  .crm-workspace h1 { letter-spacing: -0.8px; }
+  .crm-workspace .muted,
+  .crm-workspace .page-heading .muted,
+  .crm-workspace td,
+  .crm-workspace label,
+  .crm-workspace .stat-card span,
+  .crm-workspace .lesson-main > p,
+  .crm-workspace .method-excerpt,
+  .crm-workspace .draft-row > p,
+  .crm-workspace .method-content,
+  .crm-workspace .contract-preview pre,
+  .crm-workspace .contract-saved-body,
+  .crm-workspace .report-student-heading p,
+  .crm-workspace .contract-student-summary,
+  .crm-workspace .crm-shortcuts > a > span { color: #b6c7e3; }
+  .crm-workspace .stat-card p,
+  .crm-workspace .page-heading .eyebrow,
+  .crm-workspace .breadcrumb,
+  .crm-workspace .topbar-right,
+  .crm-workspace .panel-description,
+  .crm-workspace .empty p,
+  .crm-workspace .mini-task p,
+  .crm-workspace .lesson-time span,
+  .crm-workspace .task-info p,
+  .crm-workspace .task-info span,
+  .crm-workspace .report-note,
+  .crm-workspace .report-footnote,
+  .crm-workspace .contract-submit > span,
+  .crm-workspace .contract-template > p,
+  .crm-workspace .center-footer,
+  .crm-workspace .center-footer span { color: #94aacd; }
+  .crm-workspace .lesson-time,
+  .crm-workspace .text-button,
+  .crm-workspace .panel-heading a,
+  .crm-workspace .icon-button,
+  .crm-workspace .stat-card > div { color: #93beff; }
+  .crm-workspace .primary,
+  .login-enterprise .login-card .login-submit {
+    background: linear-gradient(135deg, #3478e6, #435cd4);
+    border: 1px solid #85b7ff66;
+    color: #fff;
+    border-radius: 10px;
+    box-shadow: inset 0 1px 0 #ffffff24, 0 5px 18px #1c55c433;
+  }
+  .crm-workspace .secondary,
+  .crm-workspace .notification {
+    background: #89b5ff0e;
+    border: 1px solid #a2c6ff30;
+    border-radius: 9px;
+    color: #c0d7fb;
+  }
+  .crm-workspace :is(button, a),
+  .login-enterprise button {
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+  .crm-workspace :is(a, button) svg,
+  .crm-workspace :is(.group-icon, .file-icon, .stat-card) svg,
+  .login-enterprise button svg {
+    transition: transform 220ms ease, color 180ms ease;
+    transform-origin: center;
+  }
+  .crm-workspace .primary:active,
+  .crm-workspace .secondary:active,
+  .login-enterprise .login-submit:active { transform: scale(.98); }
+  .crm-workspace :is(button, a):focus-visible,
+  .login-enterprise :is(button, a):focus-visible {
+    outline: 2px solid #9acbff;
+    outline-offset: 4px;
+  }
+  .crm-workspace :is(input, select, textarea),
+  .login-enterprise .login-card input {
+    background: #09172cd9;
+    border: 1px solid #9ebffb30;
+    border-radius: 9px;
+    color: #dfebff;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+  .crm-workspace :is(input, select, textarea):focus,
+  .login-enterprise .login-card input:focus {
+    border-color: #79acff;
+    box-shadow: 0 0 0 3px #64a0ff20;
+    outline: none;
+  }
+  .crm-workspace input::placeholder,
+  .crm-workspace textarea::placeholder,
+  .login-enterprise input::placeholder { color: #859cbc; }
+  .crm-workspace select option { background: #11213b; color: #e6efff; }
+  .crm-workspace .search-row { background: #172b465c; border-color: var(--line); border-radius: 11px; }
+  .crm-workspace .search-row input { background: transparent; }
+  .crm-workspace th { background: #08182e6e; color: #a9bfdf; }
+  .crm-workspace :is(th, td, .panel-heading, .lesson-card, .mini-task, .group-footer, .method-footer, .task-row, .attendance-row, .close-lesson, .draft-row, .center-footer, .report-details, .contract-submit),
+  .crm-workspace .crm-shortcuts > a,
+  .crm-workspace .contract-editor h3 { border-color: #abcaff1a; }
+  .crm-workspace tbody tr { transition: background 160ms ease; }
+  .crm-workspace tbody tr:hover { background: #6b9ded0e; }
+  .crm-workspace .tag,
+  .crm-workspace .status,
+  .crm-workspace .panel-heading h2 span {
+    background: #7ea5ff19;
+    color: #b4ccff;
+    border-radius: 6px;
+  }
+  .crm-workspace .status.green { background: #46d4ab1a; color: #88e5c7; }
+  .crm-workspace .status.amber { background: #f6bc4b19; color: #f2ce88; }
+  .crm-workspace .status.red { background: #fb7d8b1c; color: #ffa8b2; }
+  .crm-workspace .schedule-notice,
+  .crm-workspace .contract-template,
+  .crm-workspace .contract-student-summary,
+  .crm-workspace .scanner-viewport {
+    background: #122b4c8c;
+    border-color: #93bbff2a;
+    border-radius: 12px;
+  }
+  .crm-workspace .schedule-notice strong,
+  .crm-workspace .scan-placeholder strong { color: #bad8ff; }
+  .crm-workspace .schedule-notice p { color: #a6bddf; }
+  .crm-workspace .center-modal {
+    background: linear-gradient(145deg, #1c3153fa, #0d1b32fc);
+    border: 1px solid #a7caff40;
+    border-radius: 20px;
+    box-shadow: 0 30px 100px #0008;
+    animation: s7-enter 240ms ease both;
+  }
+  .crm-workspace .modal-backdrop { background: #030a1bc2; backdrop-filter: blur(8px); }
+  .crm-workspace .toast,
+  .crm-workspace .success-banner { background: #123c3a; color: #a0edcf; border-color: #67dfad40; }
+  .crm-workspace .error-banner,
+  .login-enterprise .login-error { background: #402336; color: #ffc0cc; border-color: #ff92ae40; }
+  .crm-workspace .center-body { animation: s7-enter 320ms ease both; }
+  .crm-workspace .stat-card { transition: transform 220ms ease, border-color 220ms ease; }
+  .login-enterprise .login-form-side { max-width: 440px; padding-top: 42px; animation: s7-enter 420ms ease both; }
+  .login-enterprise .center-logo,
+  .login-enterprise .login-card h2 { color: #edf4ff; }
+  .login-enterprise .center-logo span { color: #bbd3fa; border-color: #8dafff40; }
+  .login-enterprise .login-card label { color: #bfd1ed; }
+  .login-enterprise :is(.login-intro, .login-access-label, .login-help p, .login-roles, .login-bottom-note),
+  .login-enterprise .login-card .eyebrow,
+  .login-enterprise .login-help p span { color: #a1b7d9; }
+  .login-enterprise .login-help { border-color: #abcaff24; }
+  .login-enterprise .login-card input { height: 48px; }
+  .login-enterprise .login-card .login-submit { height: 47px; }
+  .crm-workspace { scrollbar-color: #39567e #101d32; }
+}
+@media screen and (hover: hover) {
+  .crm-workspace .center-sidebar nav a:hover {
+    background: #669fff19;
+    border-color: #8bbaff30;
+    transform: translateX(3px);
+    color: #fff;
+  }
+  .crm-workspace .center-sidebar nav a:hover svg { transform: translateY(-1px) rotate(-6deg) scale(1.1); color: #b7dbff; }
+  .crm-workspace .primary:hover,
+  .login-enterprise .login-card .login-submit:hover { background: linear-gradient(135deg, #438af4, #546ee8); box-shadow: 0 7px 24px #2d69e343; transform: translateY(-1px); }
+  .crm-workspace .secondary:hover { background: #85b6ff20; border-color: #a3caff65; }
+  .crm-workspace .text-button:hover { color: #d2e7ff; }
+  .crm-workspace .crm-shortcuts > a:hover { background: #85b6ff12; color: #c2dfff; }
+  .crm-workspace .crm-shortcuts > a:hover svg,
+  .login-enterprise .login-submit:hover svg { transform: translateX(3px); }
+  .crm-workspace .stat-card:hover { transform: translateY(-3px); border-color: #98c3ff50; }
+  .crm-workspace :is(.group-card, .method-card, .stat-card):hover > :is(.group-icon, .file-icon, div) > svg { transform: translateY(-2px) rotate(-5deg); }
+}
+@keyframes s7-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .center-app.crm-workspace *,
+  .center-app.login-enterprise * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}

@@ -1,3 +1,4 @@
+import { isLocalPreview, createLocalPreviewClient, localUser } from "@/lib/local-preview";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
@@ -17,6 +18,18 @@ export type MembershipContext = {
 };
 
 export const getSessionContext = cache(async function getSessionContext() {
+  if (isLocalPreview()) {
+    const membership: MembershipContext = {
+      id: "local-preview", role: "founder", position: null,
+      company_id: "local-s7-robotics", dashboard_route: "/dashboard/education", allowed_routes: [],
+      companies: {
+        id: "local-s7-robotics", name: "S7 Robotics", logo_url: null, brand_phrase: null,
+        invite_code: "", business_type: "Education Center", dashboard_route: "/dashboard/education",
+        country: "Kazakhstan", phone: null, plan: "Free",
+      },
+    };
+    return { setupMissing: false as const, user: localUser, supabase: createLocalPreviewClient(), membership };
+  }
   if (!hasSupabaseEnv()) {
     return { setupMissing: true as const };
   }

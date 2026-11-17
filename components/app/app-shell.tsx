@@ -1,3 +1,4 @@
+import { isLocalPreview } from "@/lib/local-preview";
 import Link from "next/link";
 import { logout } from "@/app/actions";
 import { BrandLogo } from "@/components/app/brand-logo";
@@ -141,12 +142,12 @@ export function AppShell({
               ))}
             </nav>
           </details>
-          <form action={logout} className="mt-3 lg:hidden">
+          {!isLocalPreview() && <form action={logout} className="mt-3 lg:hidden">
             <button className="premium-button w-full border border-red-300/[0.16] bg-red-500/[0.08] px-4 py-2.5 text-left text-sm text-red-100 hover:border-red-300/[0.35] hover:bg-red-500/[0.12]">
               <LogOut className="h-4 w-4" />
               {t.logout}
             </button>
-          </form>
+          </form>}
 
           <details open className="group/nav mt-4 hidden lg:block">
             <summary className="flex cursor-pointer list-none items-center justify-between px-2 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
@@ -160,12 +161,12 @@ export function AppShell({
             </nav>
           </details>
 
-          <form action={logout} className="mt-4 hidden lg:block">
+          {!isLocalPreview() && <form action={logout} className="mt-4 hidden lg:block">
             <button className="premium-button w-full border border-red-300/[0.16] bg-red-500/[0.08] px-4 py-2.5 text-left text-sm text-red-100 hover:border-red-300/[0.35] hover:bg-red-500/[0.12]">
               <LogOut className="h-4 w-4" />
               {t.logout}
             </button>
-          </form>
+          </form>}
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col lg:ml-80 lg:min-h-screen">

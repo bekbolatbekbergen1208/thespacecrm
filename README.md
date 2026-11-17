@@ -44,3 +44,7 @@ npm run dev
 ## Important
 
 The app does not use local fake data. Without valid Supabase environment variables and the SQL schema installed, the app shows `/setup` and will not pretend that database-backed actions worked.
+
+## S7 Robotics local CRM
+
+The local development CRM uses persistent embedded PostgreSQL (PGlite) and local admin/teacher accounts without Supabase. Set `LOCAL_PREVIEW=true` in `.env.local`, run `npm run dev`, and open http://localhost:3000/workspace. Initial credentials are generated in `.local-data/accounts.txt`. See [LOCAL_CRM.md](LOCAL_CRM.md) for workflows, storage, limitations, and validation.
